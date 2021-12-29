@@ -4,7 +4,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
-import plotly.figure_factory as ff
 
 # Setup config
 st.set_page_config(layout = 'wide')
