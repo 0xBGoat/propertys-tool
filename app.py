@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items = {
-        'About': "# bgoat.eth"
+        'About': "#### A tool to help users make buying/selling decisions around their Property's Virtual Realty NFTs"
     }
 )
 
