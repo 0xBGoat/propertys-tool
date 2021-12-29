@@ -76,25 +76,25 @@ def renderOverview():
         numCities = frames['ownerCity'].cityCount.sum()
 
         with col1:
-            st.metric(label='Unique Owners', value=len(df.groupby('ownerAddress')))
+            st.metric(label='Unique Owners', value=f"😎 {len(df.groupby('ownerAddress'))}")
         with col2:
-            st.metric(label='Pure Streets', value=f"{numStreets} / 840")
+            st.metric(label='Pure Streets', value=f"🛣️ {numStreets} / 840")
         with col3:
-            st.metric(label='Districts', value=f"{numDistricts} / 280")
+            st.metric(label='Districts', value=f"🏘️ {numDistricts} / 280")
         with col4:
-            st.metric(label="Cities", value=f"{numCities} / 70")
+            st.metric(label="Cities", value=f"🏙️ {numCities} / 70")
 
     with st.container():
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.subheader('🏠 Top Property Owners')
+            st.subheader('Top Property Owners')
             st.table(frames['topOwners'][['ownerName','count']])
         with col2:
-            st.subheader('🛣️ Top Street Owners')
+            st.subheader('Top Street Owners')
             st.table(frames['topStreetOwners'][['ownerName', 'count']])
         with col3:
-            st.subheader('🏘️ Top District Owners')
+            st.subheader('Top District Owners')
             st.table(frames['topDistrictOwners'][['ownerName', 'count']])
 
     with st.expander(label = "See All Properties"): 
