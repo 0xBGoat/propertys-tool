@@ -4,7 +4,14 @@ import pandas as pd
 import numpy as np
 
 # Setup config and sidebar
-st.set_page_config(layout='wide')
+st.set_page_config(
+    page_title="Property's",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items = {
+        'About': "# bgoat.eth"
+    }
+)
 
 with st.sidebar:
     st.title("Property's Virtual Realty")

@@ -3,10 +3,7 @@ import json
 from web3 import Web3
 
 offset = 0
-
-data = {
-    'assets': []
-}
+data = {'assets': []}
 
 while True:
     params = {
@@ -18,7 +15,6 @@ while True:
     }
 
     response = requests.get('https://api.opensea.io/api/v1/assets', params=params)
-
     response_json = response.json()
 
     data['assets'].extend(response_json['assets'])
