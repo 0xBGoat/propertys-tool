@@ -16,7 +16,7 @@ st.set_page_config(
 with st.sidebar:
     st.title("Property's Virtual Realty")
     st.caption("Data last updated December 29th")
-    reportType = st.selectbox('Select a Report Type', ['Overview','Owner','City','District','Street'])
+    reportType = st.selectbox('Select a Report Type', ['Overview','Owner','Street'])
 
 # Load data from disk and memoize it
 @st.experimental_memo
@@ -145,6 +145,32 @@ def renderOwnerReport():
                 with st.expander(label="See all owner data"):
                     st.write(dfOwner)
 
+def renderStreetReport():
+    frames = getDataFrames()
+    dfOwnerStreet = frames['ownerStreet']  
+
+    with st.form(key='street_form'):
+        with st.sidebar:
+            streetName = st.selectbox(label='Select a street (or start typing)', options=df['street'].drop_duplicates().sort_values().to_list())  
+            streetSubmit = st.form_submit_button(label='Submit')
+
+    st.title(f'Street Report - {streetName}')
+    dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName]
+    
+    with st.container():
+        col1, col2, col3, col4 = st.columns(4)
+        streetsCompleted = dfOwnerStreetFiltered.streetCount.sum()
+        streetOwnerCount = len(dfOwnerStreetFiltered.loc[dfOwnerStreetFiltered['streetCount']>0])
+
+        with col1:
+            st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
+        with col2:
+            st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
+        
+
+    with st.expander(label="See all street data"):
+        st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','city','district','street','propertyCount','streetCount']])
+
 df = loadData()
 
 if reportType == 'Overview':
@@ -155,5 +181,5 @@ elif reportType == 'City':
     st.title('Coming soon...')
 elif reportType == 'District':
     st.title('Coming soon...')
-else:
-    st.title('Coming soon...')
+elif reportType == 'Street':
+    renderStreetReport()
