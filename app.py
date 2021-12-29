@@ -15,7 +15,7 @@ st.set_page_config(
 
 with st.sidebar:
     st.title("Property's Virtual Realty")
-    reportType = st.selectbox('Report Type', ['Overview','Owner','City','District','Street'])
+    reportType = st.selectbox('Select a Report Type', ['Overview','Owner','City','District','Street'])
 
 # Load data from disk and memoize it
 @st.experimental_memo
