@@ -116,16 +116,16 @@ def buildOwnerReport():
                 col1, col2, col3, col4 = st.columns(4)
             
                 with col1:
-                    st.metric(label='Properties Owned', value=len(dfOwner))
+                    st.metric(label='Properties Owned', value=f"🏠 {len(dfOwner)}")
         
                 with col2:
-                    st.metric(label='Streets Owned', value=streetsOwned)
+                    st.metric(label='Streets Owned', value=f"🛣️ {streetsOwned}")
 
                 with col3:
-                    st.metric(label='Districts Owned', value=districtsOwned)
+                    st.metric(label='Districts Owned', value=f"🏘️ {districtsOwned}")
 
                 with col4:
-                    st.metric(label='Cities Owned', value=citiesOwned)
+                    st.metric(label='Cities Owned', value=f"🏙️ {citiesOwned}")
 
                 with st.expander(label="See all owner data"):
                     st.write(dfOwner)
