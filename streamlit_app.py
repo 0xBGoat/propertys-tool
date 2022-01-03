@@ -15,7 +15,7 @@ st.set_page_config(
 
 with st.sidebar:
     st.title("Property's Virtual Realty")
-    st.caption("Data last updated January 2nd")
+    st.caption("Data last updated January 3rd")
     reportType = st.selectbox('Select a Report Type', ['Overview','Owner','Street'])
 
 # Load data from disk and memoize it
