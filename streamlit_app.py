@@ -13,6 +13,25 @@ st.set_page_config(
     }
 )
 
+st.markdown(
+    """
+        <style>
+            @import url('http://fonts.cdnfonts.com/css/arco');
+            
+            @font-face {
+                font-family: 'ARCO';
+            }
+
+            h1, h2 {
+                font-family: 'ARCO';
+                color: #8f00ff;
+            }
+        </style>
+
+    """,
+    unsafe_allow_html=True,
+)
+
 with st.sidebar:
     st.title("Property's Virtual Realty")
     st.caption("Data last updated January 4th")
