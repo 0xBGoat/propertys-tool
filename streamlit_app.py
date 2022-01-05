@@ -126,7 +126,7 @@ def renderOverview():
             st.subheader('Top District Owners')
             st.table(frames['topDistrictOwners'][['ownerName', 'count']])
 
-    with st.expander(label = "See All Properties"): 
+    with st.expander(label = "See All Properties", expanded=True): 
         st.write(frames['simple']) 
 
 def renderOwnerReport(ownerName):   
@@ -161,7 +161,7 @@ def renderOwnerReport(ownerName):
                 st.metric(label='Districts Owned', value=f"🏘️ {districtsOwned}")
             with col4:
                 st.metric(label='Cities Owned', value=f"🏙️ {citiesOwned}")
-            with st.expander(label="See all owner data"):
+            with st.expander(label="See all owner data", expanded=True):
                 st.write(dfOwner)
 
 def renderStreetReport(streetName):
@@ -182,7 +182,7 @@ def renderStreetReport(streetName):
             st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
         
 
-    with st.expander(label="See all street data"):
+    with st.expander(label="See all street data", expanded=True):
         st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','city','district','street','propertyCount','streetCount']])
 
 def initializeApplication():
