@@ -16,10 +16,11 @@ st.set_page_config(
 st.markdown(
     """
         <style>
-            @import url('http://fonts.cdnfonts.com/css/arco');
-            
             @font-face {
                 font-family: 'ARCO';
+                font-style: normal;
+                font-weight: 700;
+                src: local('ARCO'), url('https://fonts.cdnfonts.com/s/23602/ARCO for OSX.woff') format('woff');
             }
 
             h1, h2 {
