@@ -161,15 +161,17 @@ def renderOwnerReport(ownerName):
                 st.metric(label='Districts Owned', value=f"🏘️ {districtsOwned}")
             with col4:
                 st.metric(label='Cities Owned', value=f"🏙️ {citiesOwned}")
-            with st.expander(label="See all owner data", expanded=True):
-                st.write(dfOwner)
+            
+        with st.expander(label="See all owner data", expanded=True):
+            st.write(dfOwner.sort_values(by='street').reset_index(drop=True))
 
 def renderStreetReport(streetName):
     st.title(f'Street Report - {streetName}')
     
     frames = getDataFrames()
     dfOwnerStreet = frames['ownerStreet']
-    dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName]
+    dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName] \
+        .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
     
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
@@ -183,7 +185,7 @@ def renderStreetReport(streetName):
         
 
     with st.expander(label="See all street data", expanded=True):
-        st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','city','district','street','propertyCount','streetCount']])
+        st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
 
 def initializeApplication():
     reportChoiceKey = 'reportChoice'
