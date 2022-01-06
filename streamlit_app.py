@@ -35,7 +35,7 @@ st.markdown(
 
 with st.sidebar:
     st.title("Property's Virtual Realty")
-    st.caption("Data last updated January 5th")
+    st.caption("Data last updated January 6th")
 
 # Load data from disk and memoize it
 @st.experimental_memo
