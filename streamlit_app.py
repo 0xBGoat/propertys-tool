@@ -51,20 +51,20 @@ df = loadData()
 
 @st.experimental_memo
 def getDataFrames():
-    dfSimple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street']]
+    dfSimple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale']]
 
     # TODO: Figure out a more efficient way to do this
-    # Create a GroupByDataFrame grouped by ownerAddress and ownerName for streets
+    # Street level grouping
     gbOwnerStreet = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'])
     dfOwnerStreet = gbOwnerStreet.size().reset_index(name='propertyCount')
     dfOwnerStreet['streetCount'] = np.floor_divide(dfOwnerStreet['propertyCount'], 7)
 
-    # Now group at the district level
+    # District level grouping
     gbOwnerDistrict = dfOwnerStreet.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'])
     dfOwnerDistrict = gbOwnerDistrict.streetCount.agg(sum).reset_index(name='streetsInDistrict')
     dfOwnerDistrict['districtCount'] = np.floor_divide(dfOwnerDistrict['streetsInDistrict'], 3)
 
-    # Now group at the city level
+    # City level grouping
     gbOwnerCity = dfOwnerDistrict.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'])
     dfOwnerCity = gbOwnerCity.districtCount.agg(sum).reset_index(name='districtsInCity')
     dfOwnerCity['cityCount'] = np.floor_divide(dfOwnerCity['districtsInCity'], 3)   
@@ -82,6 +82,10 @@ def getDataFrames():
         .districtCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     dfTopDistrictOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
+    dfTopCityOwners = dfOwnerCity.groupby(['ownerAddress','ownerName']) \
+        .cityCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
+    dfTopCityOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
+
     return {
         'simple': dfSimple,
         'ownerStreet': dfOwnerStreet,
@@ -89,7 +93,8 @@ def getDataFrames():
         'ownerCity': dfOwnerCity,
         'topOwners': dfTopOwners,
         'topStreetOwners': dfTopStreetOwners,
-        'topDistrictOwners': dfTopDistrictOwners
+        'topDistrictOwners': dfTopDistrictOwners,
+        'topCityOwners': dfTopCityOwners
     }
 
 def renderOverview():
@@ -114,7 +119,7 @@ def renderOverview():
             st.metric(label="Cities", value=f"🏙️ {numCities} / 70")
 
     with st.container():
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             st.subheader('Top Property Owners')
@@ -125,6 +130,9 @@ def renderOverview():
         with col3:
             st.subheader('Top District Owners')
             st.table(frames['topDistrictOwners'][['ownerName', 'count']])
+        with col4:
+            st.subheader('Top City Owners')
+            st.table(frames['topCityOwners'][['ownerName', 'count']])
 
     with st.expander(label = "See All Properties", expanded=True): 
         st.write(frames['simple']) 

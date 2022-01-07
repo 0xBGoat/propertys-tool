@@ -54,6 +54,10 @@ for asset in data['assets']:
             property['street'] = trait['value']
         if trait['trait_type'] == 'Unit':
             property['unit'] = trait['value']
+        if trait['trait_type'] == 'Special':
+            property['city'] = 'Special'
+            property['district'] = 'Special'
+            property['street'] = trait['value']
     
     properties.append(property)
 
