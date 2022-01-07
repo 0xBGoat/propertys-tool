@@ -135,7 +135,7 @@ def renderOverview():
             st.table(frames['topCityOwners'][['ownerName', 'count']])
 
     with st.expander(label = "See All Properties", expanded=True): 
-        st.write(frames['simple']) 
+        st.write(frames['simple'].sort_values(by='street')) 
 
 def renderOwnerReport(ownerName):   
     if ownerName != '':
