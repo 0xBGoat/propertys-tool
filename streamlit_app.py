@@ -214,7 +214,7 @@ def renderOverview():
                    * **Owner Report** - metrics and information about a specific property owner  
                 
                 ##### ⭐ New Features
-                * **Cheapest Streets** - a new section on the Overview report that identifieds the cheapest available streets with at least 7 NFTs listed on OpenSea (does not account for bundles)
+                * **Cheapest Streets** - a new section on the Overview report that identifies the cheapest available streets with at least 7 NFTs listed on OpenSea (does not account for bundles)
                    * The table also includes a **BRIX-to-ETH** ratio to help identify the most cost-effective BRIX earning opportunities
                 * Added the cheapest street price and $BRIX generation information to the individual street reports
             """)
@@ -346,6 +346,7 @@ def initializeApplication():
 
     with st.sidebar:
         st.title("Property's Virtual Realty")
+        st.caption('v0.1.0')
         st.selectbox('Select a Report Type', reportOptions, on_change=updateSessionState, key=reportChoiceKey, format_func=lambda x: x.title())
 
     reportChoice = st.session_state[reportChoiceKey]
