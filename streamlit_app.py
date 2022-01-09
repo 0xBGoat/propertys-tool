@@ -1,7 +1,10 @@
-import requests, json, urllib.parse
+import requests, json, urllib.parse, pathlib, datetime, asyncio, aiohttp, time, s3fs
 import streamlit as st
 import pandas as pd
 import numpy as np
+from web3 import Web3
+from aiocache import Cache
+from aiocache import cached
 
 # Setup config and sidebar
 st.set_page_config(
@@ -33,14 +36,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-with st.sidebar:
-    st.title("Property's Virtual Realty")
-    st.caption("Data last updated January 6th")
+data = {'assets': []}
+properties = []
 
-# Load data from disk and memoize it
-@st.experimental_memo
+@st.experimental_memo(ttl=300)
 def loadData():
-    df = pd.read_json('properties.json')
+    df = pd.read_json(
+        's3://propertys-opensea/properties.json',
+        storage_options={'key': st.secrets['AWS_ACCESS_KEY_ID'], 'secret': st.secrets['AWS_SECRET_ACCESS_KEY']}
+    )
     
     # Add a lowercased owner name column for easier lookups
     df['ownerNameLower'] = df['ownerName'].str.lower()
@@ -49,9 +53,9 @@ def loadData():
 
 df = loadData()
 
-@st.experimental_memo
+@st.experimental_memo(ttl=60)
 def getDataFrames():
-    dfSimple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale']]
+    dfSimple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
 
     # TODO: Figure out a more efficient way to do this
     # Street level grouping
@@ -87,6 +91,7 @@ def getDataFrames():
     dfTopCityOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
     return {
+        'all': df,
         'simple': dfSimple,
         'ownerStreet': dfOwnerStreet,
         'ownerDistrict': dfOwnerDistrict,
@@ -177,7 +182,13 @@ def renderStreetReport(streetName):
     st.title(f'Street Report - {streetName}')
     
     frames = getDataFrames()
+    df = frames['all']
+    dfStreet = df.loc[df['street']==streetName]
     dfOwnerStreet = frames['ownerStreet']
+
+    imageUrl = dfStreet['imagePreviewUrl'].values[0]
+    floorPrice = dfStreet['salePrice'].min() if dfStreet['salePrice'].min() > 0 else 'N/A'
+
     dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName] \
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
     
@@ -187,11 +198,12 @@ def renderStreetReport(streetName):
         streetOwnerCount = len(dfOwnerStreetFiltered.loc[dfOwnerStreetFiltered['streetCount']>0])
 
         with col1:
-            st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
+            st.image(imageUrl)
         with col2:
+            st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
             st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
+            st.metric(label='Floor Price', value=f'💹 {floorPrice}')
         
-
     with st.expander(label="See all street data", expanded=True):
         st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
 
@@ -238,6 +250,7 @@ def initializeApplication():
         st.experimental_set_query_params(**queryParams)
 
     with st.sidebar:
+        st.title("Property's Virtual Realty")
         st.selectbox('Select a Report Type', reportOptions, on_change=updateSessionState, key=reportChoiceKey)
 
     reportChoice = st.session_state[reportChoiceKey]
@@ -264,4 +277,6 @@ def initializeApplication():
         else:
             st.title('Owner Report')
 
-initializeApplication() 
+initializeApplication()
+# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) 
+# asyncio.run(main()) 
