@@ -28,11 +28,56 @@ st.markdown(
                 font-family: 'ARCO';
                 color: #8f00ff;
             }
+
+            tbody th {
+                display:none
+            }
+
+            .row_heading.level0 {
+                display:none
+            }
+            
+            .blank {
+                display:none
+            }
         </style>
 
     """,
     unsafe_allow_html=True,
 )
+
+brixDict = {
+    'Beige Bay': {'house': 10, 'street': 370, 'district': 1470, 'city': 9050},
+    'Orange Oasis': {'house': 20, 'street': 490, 'district': 1790, 'city': 11550},
+    'Yellow Yards': {'house': 30, 'street': 610, 'district': 2110, 'city': 11520},
+    'Green Grove': {'house': 40, 'street': 730, 'district': 2430, 'city': 13560},
+    'Purple Palms': {'house': 50, 'street': 850, 'district': 2750, 'city': 15600},
+    'Blue Bayside': {'house': 60, 'street': 970, 'district': 3070, 'city': 13730},
+    'X AE X-II': {'house': 80, 'street': 1210, 'district': 4110, 'city': 19990}
+}
+
+specialBrixDict = {
+    'Casa Blanca': 250,
+    'Mystical Rocks': 250,
+    'Spiky Singers': 250,
+    'The Guardian': 250,
+    'Candy Castle': 600,
+    'Cathedral of Wisdom': 600,
+    'Palace of Eternity': 600,
+    "Peter's Great Wall": 600,
+    "Property's Stadium": 600,
+    'The Impossible Bridge': 600,
+    'Ancient Labyrinth': 1200,
+    'Fort in the Leaves': 1200,
+    'Great Temple of Peter': 1200,
+    'Le Tower': 1200,
+    'Mount Proper': 1200,
+    'Question Cat': 1200,
+    'The Emperors Arena': 1200,
+    'The Money Pool': 1200,
+    'The Secret Glass Pyramid': 1200,
+    'The Sunken City': 1200
+}
 
 @st.experimental_memo(ttl=300)
 def loadData():
@@ -101,6 +146,15 @@ def renderOverview():
     st.title('Overview')
 
     frames = getDataFrames()
+
+    dfAvailableStreets = df.groupby(['city', 'district', 'street'])['salePrice'] \
+            .apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None) \
+            .to_frame().dropna().sort_values(by='salePrice').reset_index()
+
+    dfAvailableStreets = dfAvailableStreets[dfAvailableStreets.city != 'Special']
+    dfAvailableStreets['brixYield'] = dfAvailableStreets.apply(lambda x: brixDict[str(x['city']).strip()]['street'], axis=1)
+    dfAvailableStreets['brix/eth'] = dfAvailableStreets['brixYield'] / dfAvailableStreets['salePrice']
+    dfAvailableStreets = dfAvailableStreets.round({'salePrice': 2, 'brix/eth': 2})
     
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
@@ -108,8 +162,6 @@ def renderOverview():
         numStreets = frames['ownerStreet'].streetCount.sum()
         numDistricts = frames['ownerDistrict'].districtCount.sum()
         numCities = frames['ownerCity'].cityCount.sum()
-
-        dfAvailableStreets = df.groupby(['city', 'district', 'street'])['salePrice'].apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None).to_frame().dropna().sort_values(by='salePrice').reset_index()
 
         with col1:
             st.metric(label='Unique Owners', value=f"👥 {len(df.groupby('ownerAddress'))}")
@@ -140,13 +192,33 @@ def renderOverview():
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            st.subheader('Cheapest Streets')
+            st.subheader('🏷️ Cheapest Streets')
             st.write(dfAvailableStreets)
 
         with col2:
-            st.subheader('Raw Data')
+            st.subheader('📋 Raw Data')
             with st.expander(label = "See All Properties", expanded=True): 
                 st.write(frames['simple'].sort_values(by='street'))
+
+    with st.container():
+        st.subheader('Release Notes')
+
+        with st.expander(label="Click to expand"):
+            st.subheader('v0.1.0')
+            st.markdown("""
+                ##### 📔 Notes
+                * Adding a release notes section
+                * The tool provides these initial report types:
+                   * **Overview** - metrics and information about to the entire NFT collection
+                   * **Street Report** - metrics and information about specific streets
+                   * **Owner Report** - metrics and information about a specific property owner  
+                
+                ##### ⭐ New Features
+                * **Cheapest Streets** - a new section on the Overview report that identifieds the cheapest available streets with at least 7 NFTs listed on OpenSea (does not account for bundles)
+                   * The table also includes a **BRIX-to-ETH** ratio to help identify the most cost-effective BRIX earning opportunities
+                * Added the cheapest street price and $BRIX generation information to the individual street reports
+            """)
+
 
 def renderOwnerReport(ownerName):   
     if ownerName != '':
@@ -186,20 +258,19 @@ def renderOwnerReport(ownerName):
 
 def renderStreetReport(streetName):
     st.title(f'Street Report - {streetName}')
-    
+
     frames = getDataFrames()
+    
     df = frames['all']
-    dfStreet = df.loc[df['street']==streetName]
     dfOwnerStreet = frames['ownerStreet']
 
+    dfStreet = df.loc[df['street']==streetName]
+    cityName = dfStreet.iloc[0].city.strip()
     imageUrl = dfStreet['imagePreviewUrl'].values[0]
+
     floorPrice = dfStreet['salePrice'].min() if dfStreet['salePrice'].min() > 0 else 'N/A'
     prices = dfStreet['salePrice'].dropna()
-    fullStreetAvailable = len(prices) > 6
-    fullStreetPrice = 'N/A'
-
-    if fullStreetAvailable:
-        fullStreetPrice = f'{prices.sort_values().head(7).sum():.2f}'    
+    fullStreetPrice = f'{prices.sort_values().head(7).sum():.2f}' if len(prices) > 6 else 'N/A'    
 
     dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName] \
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
@@ -212,14 +283,24 @@ def renderStreetReport(streetName):
         with col1:
             st.image(imageUrl, use_column_width='auto')
         with col2:
-            st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
-            st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
-            st.metric(label='Floor Price', value=f'💹 {floorPrice}')
+            if cityName != 'Special':
+                st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
+                st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
+            else:
+                st.metric(label='$BRIX per Special', value=f'🧱 {specialBrixDict[streetName]}')
+
+            st.metric(label='Floor Price', value=f'Ξ {floorPrice}')
         with col3:
-            st.metric(label='Cheapest Full Street', value=f'🏷️ {fullStreetPrice}')
+            if cityName != 'Special':
+                st.metric(label='Cheapest Full Street', value=f'🏷️ {fullStreetPrice}')
+                st.metric(label='$BRIX per House', value=f"🧱 {brixDict[cityName]['house']}")
+                st.metric(label='$BRIX per Street', value=f"🧱 {brixDict[cityName]['street']}")
         
-    with st.expander(label="See all street data", expanded=True):
-        st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
+    with st.container():
+        st.subheader('Owner Data')
+
+        with st.expander(label="Click to expand", expanded=True):
+            st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
 
 def initializeApplication():
     reportChoiceKey = 'reportChoice'
@@ -292,5 +373,3 @@ def initializeApplication():
             st.title('Owner Report')
 
 initializeApplication()
-# asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) 
-# asyncio.run(main()) 
