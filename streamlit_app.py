@@ -46,7 +46,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-brixDict = {
+PROP_BRIX_DICT = {
     'Beige Bay': {'house': 10, 'street': 370, 'district': 1470, 'city': 9050},
     'Orange Oasis': {'house': 20, 'street': 490, 'district': 1790, 'city': 11550},
     'Yellow Yards': {'house': 30, 'street': 610, 'district': 2110, 'city': 11520},
@@ -56,7 +56,7 @@ brixDict = {
     'X AE X-II': {'house': 80, 'street': 1210, 'district': 4110, 'city': 19990}
 }
 
-specialBrixDict = {
+SPECIAL_BRIX_DICT = {
     'Casa Blanca': 250,
     'Mystical Rocks': 250,
     'Spiky Singers': 250,
@@ -80,7 +80,7 @@ specialBrixDict = {
 }
 
 @st.experimental_memo(ttl=300)
-def loadData():
+def load_data():
     df = pd.read_json(
         's3://propertys-opensea/properties.json',
         storage_options={'key': st.secrets['AWS_ACCESS_KEY_ID'], 'secret': st.secrets['AWS_SECRET_ACCESS_KEY']}
@@ -91,86 +91,86 @@ def loadData():
 
     return df
 
-df = loadData()
+df = load_data()
 
 @st.experimental_memo(ttl=60)
-def getDataFrames():
-    dfSimple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
+def get_data_frames():
+    df_simple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
 
     # TODO: Figure out a more efficient way to do this
     # Street level grouping
-    gbOwnerStreet = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'])
-    dfOwnerStreet = gbOwnerStreet.size().reset_index(name='propertyCount')
-    dfOwnerStreet['streetCount'] = np.floor_divide(dfOwnerStreet['propertyCount'], 7)
+    gb_owner_street = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'])
+    df_owner_street = gb_owner_street.size().reset_index(name='propertyCount')
+    df_owner_street['streetCount'] = np.floor_divide(df_owner_street['propertyCount'], 7)
 
     # District level grouping
-    gbOwnerDistrict = dfOwnerStreet.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'])
-    dfOwnerDistrict = gbOwnerDistrict.streetCount.agg(sum).reset_index(name='streetsInDistrict')
-    dfOwnerDistrict['districtCount'] = np.floor_divide(dfOwnerDistrict['streetsInDistrict'], 3)
+    gb_owner_district = df_owner_street.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'])
+    df_owner_district = gb_owner_district.streetCount.agg(sum).reset_index(name='streetsInDistrict')
+    df_owner_district['districtCount'] = np.floor_divide(df_owner_district['streetsInDistrict'], 3)
 
     # City level grouping
-    gbOwnerCity = dfOwnerDistrict.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'])
-    dfOwnerCity = gbOwnerCity.districtCount.agg(sum).reset_index(name='districtsInCity')
-    dfOwnerCity['cityCount'] = np.floor_divide(dfOwnerCity['districtsInCity'], 3)   
+    gb_owner_city = df_owner_district.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'])
+    df_owner_city = gb_owner_city.districtCount.agg(sum).reset_index(name='districtsInCity')
+    df_owner_city['cityCount'] = np.floor_divide(df_owner_city['districtsInCity'], 3)   
 
     # Create top 10 dataframes (not worth doing City owners yet)
-    dfTopOwners = df.groupby(['ownerAddress', 'ownerName']) \
+    df_top_owners = df.groupby(['ownerAddress', 'ownerName']) \
         .size().reset_index(name='count').sort_values(by='count', ascending=False).head(10)
-    dfTopOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
+    df_top_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    dfTopStreetOwners = dfOwnerStreet.groupby(['ownerAddress','ownerName']) \
+    df_top_street_owners = df_owner_street.groupby(['ownerAddress','ownerName']) \
         .streetCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
-    dfTopStreetOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
+    df_top_street_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    dfTopDistrictOwners = dfOwnerDistrict.groupby(['ownerAddress','ownerName']) \
+    df_top_district_owners = df_owner_district.groupby(['ownerAddress','ownerName']) \
         .districtCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
-    dfTopDistrictOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
+    df_top_district_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    dfTopCityOwners = dfOwnerCity.groupby(['ownerAddress','ownerName']) \
+    df_top_city_owners = df_owner_city.groupby(['ownerAddress','ownerName']) \
         .cityCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
-    dfTopCityOwners.index = pd.RangeIndex(start=1, stop=11, step=1)
+    df_top_city_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
     return {
         'all': df,
-        'simple': dfSimple,
-        'ownerStreet': dfOwnerStreet,
-        'ownerDistrict': dfOwnerDistrict,
-        'ownerCity': dfOwnerCity,
-        'topOwners': dfTopOwners,
-        'topStreetOwners': dfTopStreetOwners,
-        'topDistrictOwners': dfTopDistrictOwners,
-        'topCityOwners': dfTopCityOwners
+        'simple': df_simple,
+        'ownerStreet': df_owner_street,
+        'ownerDistrict': df_owner_district,
+        'ownerCity': df_owner_city,
+        'topOwners': df_top_owners,
+        'topStreetOwners': df_top_street_owners,
+        'topDistrictOwners': df_top_district_owners,
+        'topCityOwners': df_top_city_owners
     }
 
-def renderOverview():
+def render_overview():
     st.title('Overview')
 
-    frames = getDataFrames()
+    frames = get_data_frames()
 
-    dfAvailableStreets = df.groupby(['city', 'district', 'street'])['salePrice'] \
+    df_available_streets = df.groupby(['city', 'district', 'street'])['salePrice'] \
             .apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None) \
             .to_frame().dropna().sort_values(by='salePrice').reset_index()
 
-    dfAvailableStreets = dfAvailableStreets[dfAvailableStreets.city != 'Special']
-    dfAvailableStreets['brixYield'] = dfAvailableStreets.apply(lambda x: brixDict[str(x['city']).strip()]['street'], axis=1)
-    dfAvailableStreets['brix/eth'] = dfAvailableStreets['brixYield'] / dfAvailableStreets['salePrice']
-    dfAvailableStreets = dfAvailableStreets.round({'salePrice': 2, 'brix/eth': 2})
+    df_available_streets = df_available_streets[df_available_streets.city != 'Special']
+    df_available_streets['brixYield'] = df_available_streets.apply(lambda x: PROP_BRIX_DICT[str(x['city']).strip()]['street'], axis=1)
+    df_available_streets['brix/eth'] = df_available_streets['brixYield'] / df_available_streets['salePrice']
+    df_available_streets = df_available_streets.round({'salePrice': 2, 'brix/eth': 2})
     
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
 
-        numStreets = frames['ownerStreet'].streetCount.sum()
-        numDistricts = frames['ownerDistrict'].districtCount.sum()
-        numCities = frames['ownerCity'].cityCount.sum()
+        num_streets = frames['ownerStreet'].streetCount.sum()
+        num_districts = frames['ownerDistrict'].districtCount.sum()
+        num_cities = frames['ownerCity'].cityCount.sum()
 
         with col1:
             st.metric(label='Unique Owners', value=f"👥 {len(df.groupby('ownerAddress'))}")
         with col2:
-            st.metric(label='Pure Streets', value=f"🛣️ {numStreets} / 840")
+            st.metric(label='Pure Streets', value=f"🛣️ {num_streets} / 840")
         with col3:
-            st.metric(label='Districts', value=f"🏘️ {numDistricts} / 280")
+            st.metric(label='Districts', value=f"🏘️ {num_districts} / 280")
         with col4:
-            st.metric(label="Cities", value=f"🏙️ {numCities} / 70")
+            st.metric(label="Cities", value=f"🏙️ {num_cities} / 70")
 
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
@@ -193,7 +193,7 @@ def renderOverview():
 
         with col1:
             st.subheader('🏷️ Cheapest Streets')
-            st.write(dfAvailableStreets)
+            st.write(df_available_streets)
 
         with col2:
             st.subheader('📋 Raw Data')
@@ -220,157 +220,157 @@ def renderOverview():
             """)
 
 
-def renderOwnerReport(ownerName):   
-    if ownerName != '':
-        st.title(f'Owner Report - {ownerName}')
+def render_owner_report(owner_name):   
+    if owner_name != '':
+        st.title(f'Owner Report - {owner_name}')
     else:
         st.title('Owner Report')
 
-    ownerNameLower = ownerName.lower()
+    owner_name_lower = owner_name.lower()
 
-    frames = getDataFrames()
-    dfOwnerStreet = frames['ownerStreet']
-    dfOwnerDistrict = frames['ownerDistrict']
-    dfOwnerCity = frames['ownerCity']
+    frames = get_data_frames()
+    df_owner_street = frames['ownerStreet']
+    df_owner_district = frames['ownerDistrict']
+    df_owner_city = frames['ownerCity']
 
-    if ownerName is not None:
-        ownerLabel = 'ownerAddress' if ownerNameLower.startswith('0x') else 'ownerNameLower'
+    if owner_name is not None:
+        owner_label = 'ownerAddress' if owner_name_lower.startswith('0x') else 'ownerNameLower'
 
-        dfOwner = df.loc[df[ownerLabel]==ownerNameLower][['ownerAddress','ownerName','city','district','street']]
-        streetsOwned = dfOwnerStreet.loc[dfOwnerStreet[ownerLabel]==ownerNameLower].streetCount.sum()
-        districtsOwned = dfOwnerDistrict.loc[dfOwnerDistrict[ownerLabel]==ownerNameLower].districtCount.sum()
-        citiesOwned = dfOwnerCity.loc[dfOwnerCity[ownerLabel]==ownerNameLower].cityCount.sum()
+        df_owner = df.loc[df[owner_label]==owner_name_lower][['ownerAddress','ownerName','city','district','street']]
+        streets_owned = df_owner_street.loc[df_owner_street[owner_label]==owner_name_lower].streetCount.sum()
+        districts_owned = df_owner_district.loc[df_owner_district[owner_label]==owner_name_lower].districtCount.sum()
+        cities_owned = df_owner_city.loc[df_owner_city[owner_label]==owner_name_lower].cityCount.sum()
 
         with st.container():
             col1, col2, col3, col4 = st.columns(4)
         
             with col1:
-                st.metric(label='Properties Owned', value=f"🏠 {len(dfOwner)}")        
+                st.metric(label='Properties Owned', value=f"🏠 {len(df_owner)}")        
             with col2:
-                st.metric(label='Streets Owned', value=f"🛣️ {streetsOwned}")
+                st.metric(label='Streets Owned', value=f"🛣️ {streets_owned}")
             with col3:
-                st.metric(label='Districts Owned', value=f"🏘️ {districtsOwned}")
+                st.metric(label='Districts Owned', value=f"🏘️ {districts_owned}")
             with col4:
-                st.metric(label='Cities Owned', value=f"🏙️ {citiesOwned}")
+                st.metric(label='Cities Owned', value=f"🏙️ {cities_owned}")
             
         with st.expander(label="See all owner data", expanded=True):
-            st.write(dfOwner.sort_values(by='street').reset_index(drop=True))
+            st.write(df_owner.sort_values(by='street').reset_index(drop=True))
 
-def renderStreetReport(streetName):
+def render_street_report(streetName):
     st.title(f'Street Report - {streetName}')
 
-    frames = getDataFrames()
+    frames = get_data_frames()
     
     df = frames['all']
-    dfOwnerStreet = frames['ownerStreet']
+    df_owner_street = frames['ownerStreet']
 
-    dfStreet = df.loc[df['street']==streetName]
-    cityName = dfStreet.iloc[0].city.strip()
-    imageUrl = dfStreet['imagePreviewUrl'].values[0]
+    df_street = df.loc[df['street']==streetName]
+    city_name = df_street.iloc[0].city.strip()
+    image_url = df_street['imagePreviewUrl'].values[0]
 
-    floorPrice = dfStreet['salePrice'].min() if dfStreet['salePrice'].min() > 0 else 'N/A'
-    prices = dfStreet['salePrice'].dropna()
-    fullStreetPrice = f'{prices.sort_values().head(7).sum():.2f}' if len(prices) > 6 else 'N/A'    
+    floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
+    prices = df_street['salePrice'].dropna()
+    full_street_price = f'{prices.sort_values().head(7).sum():.2f}' if len(prices) > 6 else 'N/A'    
 
-    dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName] \
+    df_owner_street_filtered = df_owner_street.loc[df_owner_street['street']==streetName] \
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
     
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
-        streetsCompleted = dfOwnerStreetFiltered.streetCount.sum()
-        streetOwnerCount = len(dfOwnerStreetFiltered.loc[dfOwnerStreetFiltered['streetCount']>0])
+        streets_completed = df_owner_street_filtered.streetCount.sum()
+        street_owner_count = len(df_owner_street_filtered.loc[df_owner_street_filtered['streetCount']>0])
 
         with col1:
-            st.image(imageUrl, use_column_width='auto')
+            st.image(image_url, use_column_width='auto')
         with col2:
-            if cityName != 'Special':
-                st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
-                st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
+            if city_name != 'Special':
+                st.metric(label='Pure Streets', value=f'🛣️ {streets_completed} / 10')
+                st.metric(label='Street Owners', value=f'👥 {street_owner_count}')
             else:
-                st.metric(label='$BRIX per Special', value=f'🧱 {specialBrixDict[streetName]}')
+                st.metric(label='$BRIX per Special', value=f'🧱 {SPECIAL_BRIX_DICT[streetName]}')
 
-            st.metric(label='Floor Price', value=f'Ξ {floorPrice}')
+            st.metric(label='Floor Price', value=f'Ξ {floor_price}')
         with col3:
-            if cityName != 'Special':
-                st.metric(label='Cheapest Full Street', value=f'🏷️ {fullStreetPrice}')
-                st.metric(label='$BRIX per House', value=f"🧱 {brixDict[cityName]['house']}")
-                st.metric(label='$BRIX per Street', value=f"🧱 {brixDict[cityName]['street']}")
+            if city_name != 'Special':
+                st.metric(label='Cheapest Full Street', value=f'🏷️ {full_street_price}')
+                st.metric(label='$BRIX per House', value=f"🧱 {PROP_BRIX_DICT[city_name]['house']}")
+                st.metric(label='$BRIX per Street', value=f"🧱 {PROP_BRIX_DICT[city_name]['street']}")
         
     with st.container():
         st.subheader('Owner Data')
 
         with st.expander(label="Click to expand", expanded=True):
-            st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
+            st.write(df_owner_street_filtered[['ownerAddress','ownerName','propertyCount','streetCount']])
 
-def initializeApplication():
-    reportChoiceKey = 'reportChoice'
-    streetChoiceKey = 'streetChoice'
-    ownerInputKey = 'ownerInput'
+def init():
+    report_choice_key = 'reportChoice'
+    street_choice_key = 'streetChoice'
+    owner_input_key = 'ownerInput'
 
-    reportOptions = ['overview', 'street', 'owner']
-    streetOptions = df['street'].drop_duplicates().sort_values().to_list()
+    report_options = ['overview', 'street', 'owner']
+    street_options = df['street'].drop_duplicates().sort_values().to_list()
     
-    queryParams = st.experimental_get_query_params()
-    queryReportChoice = queryParams['report'][0] if 'report' in queryParams else None
-    queryStreetChoice = queryParams['street'][0] if 'street' in queryParams else None
-    queryOwnerInput = queryParams['owner'][0] if 'owner' in queryParams else None
+    query_params = st.experimental_get_query_params()
+    query_report_choice = query_params['report'][0] if 'report' in query_params else None
+    query_street_choice = query_params['street'][0] if 'street' in query_params else None
+    query_owner_input = query_params['owner'][0] if 'owner' in query_params else None
 
-    st.session_state[reportChoiceKey] = queryReportChoice if queryReportChoice in reportOptions else reportOptions[0]
-    st.session_state[streetChoiceKey] = queryStreetChoice if queryStreetChoice in streetOptions else streetOptions[0]
-    st.session_state[ownerInputKey] = queryOwnerInput if queryOwnerInput is not None else ''
+    st.session_state[report_choice_key] = query_report_choice if query_report_choice in report_options else report_options[0]
+    st.session_state[street_choice_key] = query_street_choice if query_street_choice in street_options else street_options[0]
+    st.session_state[owner_input_key] = query_owner_input if query_owner_input is not None else ''
 
-    def updateSessionState():
-        queryParams = st.experimental_get_query_params()
+    def update_session_state():
+        query_params = st.experimental_get_query_params()
 
-        reportChoice = st.session_state[reportChoiceKey]
-        queryParams['report'] = reportChoice     
+        report_choice = st.session_state[report_choice_key]
+        query_params['report'] = report_choice     
 
-        if reportChoice == 'street':
-            queryParams['street'] = st.session_state[streetChoiceKey]
+        if report_choice == 'street':
+            query_params['street'] = st.session_state[street_choice_key]
             
-            if 'owner' in queryParams:
-                queryParams.pop('owner')
-        elif reportChoice == 'owner':
-            queryParams['owner'] = st.session_state[ownerInputKey]
+            if 'owner' in query_params:
+                query_params.pop('owner')
+        elif report_choice == 'owner':
+            query_params['owner'] = st.session_state[owner_input_key]
             
-            if 'street' in queryParams:
-                queryParams.pop('street')
+            if 'street' in query_params:
+                query_params.pop('street')
         else:
-            if 'owner' in queryParams:
-                queryParams.pop('owner')
+            if 'owner' in query_params:
+                query_params.pop('owner')
 
-            if 'street' in queryParams:
-                queryParams.pop('street')               
+            if 'street' in query_params:
+                query_params.pop('street')               
 
-        st.experimental_set_query_params(**queryParams)
+        st.experimental_set_query_params(**query_params)
 
     with st.sidebar:
         st.title("Property's Virtual Realty")
         st.caption('v0.1.0')
-        st.selectbox('Select a Report Type', reportOptions, on_change=updateSessionState, key=reportChoiceKey, format_func=lambda x: x.title())
+        st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
-    reportChoice = st.session_state[reportChoiceKey]
+    report_choice = st.session_state[report_choice_key]
 
-    if reportChoice == 'overview':
-        renderOverview()
-    elif reportChoice == 'street':
+    if report_choice == 'overview':
+        render_overview()
+    elif report_choice == 'street':
         with st.form(key='street_form'):
             with st.sidebar:
-                st.selectbox(label='Select a street (or start typing)', options=streetOptions, key=streetChoiceKey)  
-                st.form_submit_button(label='Submit', on_click=updateSessionState)
+                st.selectbox(label='Select a street (or start typing)', options=street_options, key=street_choice_key)  
+                st.form_submit_button(label='Submit', on_click=update_session_state)
         
-        renderStreetReport(st.session_state[streetChoiceKey])
-    elif reportChoice == 'owner':
-        ownerInput = st.session_state[ownerInputKey]
+        render_street_report(st.session_state[street_choice_key])
+    elif report_choice == 'owner':
+        owner_input = st.session_state[owner_input_key]
 
         with st.form(key='owner_form'):
             with st.sidebar:
-                st.text_input('Owner Name or Address', key=ownerInputKey)
-                ownerSubmit = st.form_submit_button(label='Submit', on_click=updateSessionState)
+                st.text_input('Owner Name or Address', key=owner_input_key)
+                owner_submit = st.form_submit_button(label='Submit', on_click=update_session_state)
 
-        if ownerSubmit or ownerInput != '':
-            renderOwnerReport(ownerInput)
+        if owner_submit or owner_input != '':
+            render_owner_report(owner_input)
         else:
             st.title('Owner Report')
 
-initializeApplication()
+init()
