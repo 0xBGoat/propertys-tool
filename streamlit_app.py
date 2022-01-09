@@ -3,8 +3,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from web3 import Web3
-from aiocache import Cache
-from aiocache import cached
 
 # Setup config and sidebar
 st.set_page_config(
