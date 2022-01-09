@@ -109,6 +109,8 @@ def renderOverview():
         numDistricts = frames['ownerDistrict'].districtCount.sum()
         numCities = frames['ownerCity'].cityCount.sum()
 
+        dfAvailableStreets = df.groupby(['city', 'district', 'street'])['salePrice'].apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None).to_frame().dropna().sort_values(by='salePrice').reset_index()
+
         with col1:
             st.metric(label='Unique Owners', value=f"👥 {len(df.groupby('ownerAddress'))}")
         with col2:
@@ -133,9 +135,18 @@ def renderOverview():
         with col4:
             st.subheader('Top City Owners')
             st.table(frames['topCityOwners'][['ownerName', 'count']])
+    
+    with st.container():
+        col1, col2 = st.columns([1, 2])
 
-    with st.expander(label = "See All Properties", expanded=True): 
-        st.write(frames['simple'].sort_values(by='street')) 
+        with col1:
+            st.subheader('Cheapest Streets')
+            st.write(dfAvailableStreets)
+
+        with col2:
+            st.subheader('Raw Data')
+            with st.expander(label = "See All Properties", expanded=True): 
+                st.write(frames['simple'].sort_values(by='street'))
 
 def renderOwnerReport(ownerName):   
     if ownerName != '':
