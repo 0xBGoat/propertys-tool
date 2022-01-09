@@ -34,9 +34,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-data = {'assets': []}
-properties = []
-
 @st.experimental_memo(ttl=300)
 def loadData():
     df = pd.read_json(
@@ -186,6 +183,12 @@ def renderStreetReport(streetName):
 
     imageUrl = dfStreet['imagePreviewUrl'].values[0]
     floorPrice = dfStreet['salePrice'].min() if dfStreet['salePrice'].min() > 0 else 'N/A'
+    prices = dfStreet['salePrice'].dropna()
+    fullStreetAvailable = len(prices) > 6
+    fullStreetPrice = 'N/A'
+
+    if fullStreetAvailable:
+        fullStreetPrice = f'{prices.sort_values().head(7).sum():.2f}'    
 
     dfOwnerStreetFiltered = dfOwnerStreet.loc[dfOwnerStreet['street']==streetName] \
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
@@ -196,11 +199,13 @@ def renderStreetReport(streetName):
         streetOwnerCount = len(dfOwnerStreetFiltered.loc[dfOwnerStreetFiltered['streetCount']>0])
 
         with col1:
-            st.image(imageUrl)
+            st.image(imageUrl, use_column_width='auto')
         with col2:
             st.metric(label='Pure Streets', value=f'🛣️ {streetsCompleted} / 10')
             st.metric(label='Street Owners', value=f'👥 {streetOwnerCount}')
             st.metric(label='Floor Price', value=f'💹 {floorPrice}')
+        with col3:
+            st.metric(label='Cheapest Full Street', value=f'🏷️ {fullStreetPrice}')
         
     with st.expander(label="See all street data", expanded=True):
         st.write(dfOwnerStreetFiltered[['ownerAddress','ownerName','propertyCount','streetCount']])
@@ -249,7 +254,7 @@ def initializeApplication():
 
     with st.sidebar:
         st.title("Property's Virtual Realty")
-        st.selectbox('Select a Report Type', reportOptions, on_change=updateSessionState, key=reportChoiceKey)
+        st.selectbox('Select a Report Type', reportOptions, on_change=updateSessionState, key=reportChoiceKey, format_func=lambda x: x.title())
 
     reportChoice = st.session_state[reportChoiceKey]
 
