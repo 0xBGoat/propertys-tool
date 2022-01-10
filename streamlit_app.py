@@ -46,6 +46,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+WETH_PAYMENT_TOKEN = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+
 PROP_BRIX_DICT = {
     'Beige Bay': {'house': 10, 'street': 370, 'district': 1470, 'city': 9050},
     'Orange Oasis': {'house': 20, 'street': 490, 'district': 1790, 'city': 11550},
@@ -153,7 +155,8 @@ def render_overview():
 
     frames = get_data_frames()
 
-    df_available_streets = df.groupby(['city', 'district', 'street'])['salePrice'] \
+    df_buy_now_properties = df.where((df['salePrice'] > 0) & (df['paymentToken'] != WETH_PAYMENT_TOKEN))
+    df_available_streets = df_buy_now_properties.groupby(['city', 'district', 'street'])['salePrice'] \
             .apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None) \
             .to_frame().dropna().sort_values(by='salePrice').reset_index()
 
@@ -210,6 +213,14 @@ def render_overview():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.2.2')
+            st.markdown("""
+                    ##### 🐞 Bug Fixes
+                    * Fixed issue with auctions affecting cheapest street prices and removed them from market listings
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.2.1')
             st.markdown("""
                     ##### 🐞 Bug Fixes
@@ -298,7 +309,7 @@ def render_street_report(street_name):
     city_name = df_street.iloc[0].city.strip()
     image_url = df_street['imagePreviewUrl'].values[0]
 
-    listings = df_street.where(df_street['salePrice'] > 0).dropna().sort_values(by='salePrice')
+    listings = df_street.where((df_street['salePrice'] > 0) & (df_street['paymentToken'] != WETH_PAYMENT_TOKEN)).dropna().sort_values(by='salePrice')
     floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
     prices = df_street['salePrice'].dropna()
     full_street_price = f'{prices.sort_values().head(7).sum():.2f}' if len(prices) > 6 else 'N/A'    
@@ -387,8 +398,8 @@ def init():
         st.experimental_set_query_params(**query_params)
 
     with st.sidebar:
-        st.title("Property's Virtual Realty")
-        st.caption('v0.2.1')
+        st.title("Property's Virtual Realty Assistant")
+        st.caption('v0.2.2')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
