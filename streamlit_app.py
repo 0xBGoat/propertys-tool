@@ -89,6 +89,9 @@ def load_data():
         storage_options={'key': st.secrets['AWS_ACCESS_KEY_ID'], 'secret': st.secrets['AWS_SECRET_ACCESS_KEY']}
     )
     
+    values = {"ownerName": df['ownerAddress']}
+    df.fillna(value=values, inplace=True)
+
     # Add a lowercased owner name column for easier lookups
     df['ownerNameLower'] = df['ownerName'].str.lower()
 
@@ -102,34 +105,34 @@ def get_data_frames():
 
     # TODO: Figure out a more efficient way to do this
     # Street level grouping
-    gb_owner_street = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'])
+    gb_owner_street = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'], dropna=False)
     df_owner_street = gb_owner_street.size().reset_index(name='propertyCount')
     df_owner_street['streetCount'] = np.floor_divide(df_owner_street['propertyCount'], 7)
 
     # District level grouping
-    gb_owner_district = df_owner_street.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'])
+    gb_owner_district = df_owner_street.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'], dropna=False)
     df_owner_district = gb_owner_district.streetCount.agg(sum).reset_index(name='streetsInDistrict')
     df_owner_district['districtCount'] = np.floor_divide(df_owner_district['streetsInDistrict'], 3)
 
     # City level grouping
-    gb_owner_city = df_owner_district.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'])
+    gb_owner_city = df_owner_district.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'], dropna=False)
     df_owner_city = gb_owner_city.districtCount.agg(sum).reset_index(name='districtsInCity')
     df_owner_city['cityCount'] = np.floor_divide(df_owner_city['districtsInCity'], 3)   
 
     # Create top 10 dataframes (not worth doing City owners yet)
-    df_top_owners = df.groupby(['ownerAddress', 'ownerName']) \
+    df_top_owners = df.groupby(['ownerAddress', 'ownerName'], dropna=False) \
         .size().reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_street_owners = df_owner_street.groupby(['ownerAddress','ownerName']) \
+    df_top_street_owners = df_owner_street.groupby(['ownerAddress','ownerName'], dropna=False) \
         .streetCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_street_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_district_owners = df_owner_district.groupby(['ownerAddress','ownerName']) \
+    df_top_district_owners = df_owner_district.groupby(['ownerAddress','ownerName'], dropna=False) \
         .districtCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_district_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_city_owners = df_owner_city.groupby(['ownerAddress','ownerName']) \
+    df_top_city_owners = df_owner_city.groupby(['ownerAddress','ownerName'], dropna=False) \
         .cityCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_city_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
@@ -142,7 +145,7 @@ def get_data_frames():
         'topOwners': df_top_owners,
         'topStreetOwners': df_top_street_owners,
         'topDistrictOwners': df_top_district_owners,
-        'topCityOwners': df_top_city_owners
+        'topCityOwners': df_top_city_owners.loc[df_top_city_owners['count']>0]
     }
 
 def render_overview():
@@ -207,6 +210,16 @@ def render_overview():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.2.1')
+            st.markdown("""
+                    ##### 🐞 Bug Fixes
+                    * Fixed a bug that was excluding owners with empty OpenSea usernames from calculations/reports
+                       * The owner address will be used as the owner name for these users
+                    * Fixed issue where non-city owners were showing up in the Top City Owners section
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.2.0')
             st.markdown("""
                     ##### ⭐ New Features
@@ -223,9 +236,9 @@ def render_overview():
                     ##### 📔 Notes
                     * Adding a release notes section
                     * The tool provides these initial report types:
-                    * **Overview** - metrics and information about to the entire NFT collection
-                    * **Street Report** - metrics and information about specific streets
-                    * **Owner Report** - metrics and information about a specific property owner  
+                       * **Overview** - metrics and information about to the entire NFT collection
+                       * **Street Report** - metrics and information about specific streets
+                       * **Owner Report** - metrics and information about a specific property owner  
                     <br>
                     ##### ⭐ New Features
                     * **Cheapest Streets** - a new section on the Overview report that identifies the 
