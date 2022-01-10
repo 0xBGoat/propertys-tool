@@ -309,7 +309,7 @@ def render_street_report(street_name):
     city_name = df_street.iloc[0].city.strip()
     image_url = df_street['imagePreviewUrl'].values[0]
 
-    listings = df_street.loc[df_street['salePrice'] > 0].sort_values(by='salePrice').fillna('Mint')
+    listings = df_street.loc[(df_street['salePrice'] > 0) & (df_street['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
     floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
     prices = df_street['salePrice']
     full_street_price = f'{prices.sort_values().head(7).sum():.2f}' if len(listings) > 6 else 'N/A'    
