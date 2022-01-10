@@ -79,6 +79,9 @@ SPECIAL_BRIX_DICT = {
     'The Sunken City': 1200
 }
 
+def make_clickable(url, text):
+    return f'<a target="_blank" href="{url}">{text}</a>'
+
 @st.experimental_memo(ttl=300)
 def load_data():
     df = pd.read_json(
@@ -152,7 +155,8 @@ def render_overview():
             .to_frame().dropna().sort_values(by='salePrice').reset_index()
 
     df_available_streets = df_available_streets[df_available_streets.city != 'Special']
-    df_available_streets['brixYield'] = df_available_streets.apply(lambda x: PROP_BRIX_DICT[str(x['city']).strip()]['street'], axis=1)
+    df_available_streets['brixYield'] = df_available_streets \
+        .apply(lambda x: PROP_BRIX_DICT[str(x['city']).strip()]['street'], axis=1)
     df_available_streets['brix/eth'] = df_available_streets['brixYield'] / df_available_streets['salePrice']
     df_available_streets = df_available_streets.round({'salePrice': 2, 'brix/eth': 2})
     
@@ -197,27 +201,40 @@ def render_overview():
 
         with col2:
             st.subheader('📋 Raw Data')
-            with st.expander(label = "See All Properties", expanded=True): 
-                st.write(frames['simple'].sort_values(by='street'))
+            st.write(frames['simple'].sort_values(by='street'))
 
     with st.container():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.2.0')
+            st.markdown("""
+                    ##### ⭐ New Features
+                    * **Market Listings for Streets** - added current market listings to the Street reports with links to view on OpenSea
+                    <br><br>
+                    ##### ✔️ Other Changes
+                    * Stopped putting expand/collapse containers around some of the tabular data sections
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.1.0')
             st.markdown("""
-                ##### 📔 Notes
-                * Adding a release notes section
-                * The tool provides these initial report types:
-                   * **Overview** - metrics and information about to the entire NFT collection
-                   * **Street Report** - metrics and information about specific streets
-                   * **Owner Report** - metrics and information about a specific property owner  
-                
-                ##### ⭐ New Features
-                * **Cheapest Streets** - a new section on the Overview report that identifies the cheapest available streets with at least 7 NFTs listed on OpenSea (does not account for bundles)
-                   * The table also includes a **BRIX-to-ETH** ratio to help identify the most cost-effective BRIX earning opportunities
-                * Added the cheapest street price and $BRIX generation information to the individual street reports
-            """)
+                    ##### 📔 Notes
+                    * Adding a release notes section
+                    * The tool provides these initial report types:
+                    * **Overview** - metrics and information about to the entire NFT collection
+                    * **Street Report** - metrics and information about specific streets
+                    * **Owner Report** - metrics and information about a specific property owner  
+                    <br>
+                    ##### ⭐ New Features
+                    * **Cheapest Streets** - a new section on the Overview report that identifies the 
+                            cheapest available streets with at least 7 NFTs listed on OpenSea (does not account for bundles)
+                    * The table also includes a **BRIX-to-ETH** ratio to help identify the most cost-effective BRIX earning opportunities
+                    * Added the cheapest street price and $BRIX generation information to the individual street reports
+                """,
+                unsafe_allow_html=True
+            )
 
 
 def render_owner_report(owner_name):   
@@ -253,26 +270,27 @@ def render_owner_report(owner_name):
             with col4:
                 st.metric(label='Cities Owned', value=f"🏙️ {cities_owned}")
             
-        with st.expander(label="See all owner data", expanded=True):
-            st.write(df_owner.sort_values(by='street').reset_index(drop=True))
+        st.subheader('📋 Property Holdings')
+        st.write(df_owner.sort_values(by='street').reset_index(drop=True))
 
-def render_street_report(streetName):
-    st.title(f'Street Report - {streetName}')
+def render_street_report(street_name):
+    st.title(f'Street Report - {street_name}')
 
     frames = get_data_frames()
     
     df = frames['all']
     df_owner_street = frames['ownerStreet']
 
-    df_street = df.loc[df['street']==streetName]
+    df_street = df.loc[df['street']==street_name]
     city_name = df_street.iloc[0].city.strip()
     image_url = df_street['imagePreviewUrl'].values[0]
 
+    listings = df_street.where(df_street['salePrice'] > 0).dropna().sort_values(by='salePrice')
     floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
     prices = df_street['salePrice'].dropna()
     full_street_price = f'{prices.sort_values().head(7).sum():.2f}' if len(prices) > 6 else 'N/A'    
 
-    df_owner_street_filtered = df_owner_street.loc[df_owner_street['street']==streetName] \
+    df_owner_street_filtered = df_owner_street.loc[df_owner_street['street']==street_name] \
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
     
     with st.container():
@@ -287,7 +305,7 @@ def render_street_report(streetName):
                 st.metric(label='Pure Streets', value=f'🛣️ {streets_completed} / 10')
                 st.metric(label='Street Owners', value=f'👥 {street_owner_count}')
             else:
-                st.metric(label='$BRIX per Special', value=f'🧱 {SPECIAL_BRIX_DICT[streetName]}')
+                st.metric(label='$BRIX per Special', value=f'🧱 {SPECIAL_BRIX_DICT[street_name]}')
 
             st.metric(label='Floor Price', value=f'Ξ {floor_price}')
         with col3:
@@ -297,10 +315,21 @@ def render_street_report(streetName):
                 st.metric(label='$BRIX per Street', value=f"🧱 {PROP_BRIX_DICT[city_name]['street']}")
         
     with st.container():
-        st.subheader('Owner Data')
+        col1, col2 = st.columns(2)
 
-        with st.expander(label="Click to expand", expanded=True):
+        with col1:
+            st.subheader('📋 Owner Data')
             st.write(df_owner_street_filtered[['ownerAddress','ownerName','propertyCount','streetCount']])
+        
+        with col2:
+            st.subheader('🛒 Market Listings')
+
+            if len(listings) > 0:
+                listings = listings[['ownerAddress', 'ownerName', 'salePrice', 'lastSale', 'osLink']]
+                listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
+                st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
+            else:
+                st.subheader('No Listings!')
 
 def init():
     report_choice_key = 'reportChoice'
@@ -346,7 +375,7 @@ def init():
 
     with st.sidebar:
         st.title("Property's Virtual Realty")
-        st.caption('v0.1.0')
+        st.caption('v0.2.0')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
