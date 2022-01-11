@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from web3 import Web3
+import gcsfs
 
 # Setup config and sidebar
 st.set_page_config(
@@ -87,8 +88,8 @@ def make_clickable(url, text):
 @st.experimental_memo(ttl=300)
 def load_data():
     df = pd.read_json(
-        's3://propertys-opensea/properties.json',
-        storage_options={'key': st.secrets['AWS_ACCESS_KEY_ID'], 'secret': st.secrets['AWS_SECRET_ACCESS_KEY']}
+        'gcs://propertys-opensea/properties.json',
+        storage_options={'token': st.secrets['gcp_service_account']}
     )
     
     values = {"ownerName": df['ownerAddress']}
