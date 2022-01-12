@@ -1,5 +1,4 @@
 web3
 asyncio
 aiohttp
-s3fs
 google-cloud-storage

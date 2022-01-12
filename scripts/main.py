@@ -1,4 +1,4 @@
-import json, asyncio, aiohttp, time, s3fs, os
+import json, asyncio, aiohttp, time, os
 from web3 import Web3
 from google.cloud import storage
 
@@ -22,12 +22,10 @@ def run(event, context):
             
             data['assets'].extend(response_json['assets'])
 
-
     async def main():
         storage_client = storage.Client()
         bucket = storage_client.bucket('propertys-opensea')
         blob = bucket.blob('properties.json')
-
 
         conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300, ssl=False)
         session = aiohttp.ClientSession(connector=conn)
