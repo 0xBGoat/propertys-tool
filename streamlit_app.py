@@ -233,6 +233,14 @@ def render_overview():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.3.1')
+            st.markdown("""
+                    ##### 🐞 Bug Fixes
+                    * Fixed incorrect BRIX per district values (Thanks for catching that Rekt2Riches!)
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.3.0')
             st.markdown("""
                     ##### ⭐ New Features
@@ -496,7 +504,7 @@ def init():
 
     with st.sidebar:
         st.title("Property's Virtual Realty Assistant")
-        st.caption('v0.3.0')
+        st.caption('v0.3.1')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
