@@ -246,7 +246,7 @@ def render_overview():
                 unsafe_allow_html=True
             )
 
-            st.subheader('v0.3.0')
+            st.subheader('v0.2.2')
             st.markdown("""
                     ##### 🐞 Bug Fixes
                     * Fixed issue with auctions affecting cheapest street prices and removed them from market listings
@@ -493,7 +493,7 @@ def init():
 
     with st.sidebar:
         st.title("Property's Virtual Realty Assistant")
-        st.caption('v0.2.2')
+        st.caption('v0.3.0')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
