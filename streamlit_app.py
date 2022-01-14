@@ -19,6 +19,9 @@ st.set_page_config(
 st.markdown(
     """
         <style>
+            /*Comment out this line when developing*/
+            #MainMenu {visibility: hidden;}
+
             @font-face {
                 font-family: 'ARCO';
                 font-style: normal;
