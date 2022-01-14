@@ -69,13 +69,13 @@ PARAMS_DICT = {
 }
 
 PROP_BRIX_DICT = {
-    'Beige Bay': {'house': 10, 'street': 370, 'district': 1470, 'city': 9050},
-    'Orange Oasis': {'house': 20, 'street': 490, 'district': 1790, 'city': 11550},
-    'Yellow Yards': {'house': 30, 'street': 610, 'district': 2110, 'city': 11520},
-    'Green Grove': {'house': 40, 'street': 730, 'district': 2430, 'city': 13560},
-    'Purple Palms': {'house': 50, 'street': 850, 'district': 2750, 'city': 15600},
-    'Blue Bayside': {'house': 60, 'street': 970, 'district': 3070, 'city': 13730},
-    'X AE X-II': {'house': 80, 'street': 1210, 'district': 4110, 'city': 19990}
+    'Beige Bay': {'house': 10, 'street': 370, 'district': 1610, 'city': 9050},
+    'Orange Oasis': {'house': 20, 'street': 490, 'district': 2070, 'city': 11550},
+    'Yellow Yards': {'house': 30, 'street': 610, 'district': 2530, 'city': 11520},
+    'Green Grove': {'house': 40, 'street': 730, 'district': 2640, 'city': 13560},
+    'Purple Palms': {'house': 50, 'street': 850, 'district': 3450, 'city': 15600},
+    'Blue Bayside': {'house': 60, 'street': 970, 'district': 3910, 'city': 13730},
+    'X AE X-II': {'house': 80, 'street': 1210, 'district': 5230, 'city': 19990}
 }
 
 SPECIAL_BRIX_DICT = {
