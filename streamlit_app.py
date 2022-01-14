@@ -223,7 +223,7 @@ def render_overview():
 
         with col1:
             st.subheader('🏷️ Cheapest Streets')
-            st.table(df_available_streets[['city', 'district', 'street', 'salePrice']].head(10))
+            st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].head(10))
 
         with col2:
             st.subheader('🧱 Best BRIX Value Streets')
