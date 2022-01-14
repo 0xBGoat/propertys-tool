@@ -1,65 +1,101 @@
-import requests
-import json
+import requests, json, asyncio, aiohttp, time, s3fs
 from web3 import Web3
+from prefect import task, Flow, Parameter
 
-offset = 0
-data = {'assets': []}
+@task(log_stdout=True)
+def fetch_collection_data():
 
-while True:
-    params = {
-        'collection': 'propertysofficial',
-        'order_by': 'pk',
-        'order_direction': 'asc',
-        'offset': offset,
-        'limit': 50
-    }
+    fs = s3fs.S3FileSystem(
+        anon=False,
+        key='AKIA44PALXI5IV4VGINF',
+        secret='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'
+    )
 
-    response = requests.get('https://api.opensea.io/api/v1/assets', params=params)
-    response_json = response.json()
+    data = {'assets': []}
+    properties = []
 
-    data['assets'].extend(response_json['assets'])
+    async def gather_with_concurrency(n, *tasks):
+        semaphore = asyncio.Semaphore(n)
 
-    if len(response_json['assets']) < 50:
-        break
+        async def sem_task(task):
+            async with semaphore:
+                return await task
 
-    offset += 50
+        return await asyncio.gather(*(sem_task(task) for task in tasks))
 
-properties = []
+    async def get_async(url, session, results):
+        print(f"Making request with url: {url}")
+        async with session.get(url) as response:
+            response_json = await response.json()
+            
+            data['assets'].extend(response_json['assets'])
 
-for asset in data['assets']:
-    property = {
-        'tokenId': asset['token_id'],
-        'numSales': asset['num_sales'],
-        'imageUrl': asset['image_url'],
-        'imagePreviewUrl': asset['image_preview_url'],
-        'imageThumbnailUrl': asset['image_thumbnail_url'],
-        'name': asset['name'],
-        'osLink': asset['permalink'],
-        'lastSale': asset['last_sale'],
-        'ownerAddress': asset['owner']['address']
-    }
 
-    if asset['owner']['user'] is not None:
-        property['ownerName'] = asset['owner']['user']['username']
+    async def main():
+        conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300, ssl=False)
+        session = aiohttp.ClientSession(connector=conn)
+        urls = [f"https://api.opensea.io/api/v1/assets?collection=propertysofficial&order_by=pk&order_direction=asc&offset={i * 50}&limit=50" for i in range(120)]
 
-    if asset['last_sale'] is not None:
-        property['lastSale'] = str(Web3.fromWei(int(asset['last_sale']['total_price']), 'ether'))
+        results = {}
 
-    for trait in asset['traits']:
-        if trait['trait_type'] == 'City Name':
-            property['city'] = trait['value']
-        if trait['trait_type'] == 'District Name':
-            property['district'] = trait['value']
-        if trait['trait_type'] == 'Street Name':
-            property['street'] = trait['value']
-        if trait['trait_type'] == 'Unit':
-            property['unit'] = trait['value']
-        if trait['trait_type'] == 'Special':
-            property['city'] = 'Special'
-            property['district'] = 'Special'
-            property['street'] = trait['value']
-    
-    properties.append(property)
+        conc_req = 5
+        now = time.time()
+        await gather_with_concurrency(conc_req, *[get_async(i, session, results) for i in urls])
 
-with open('properties.json', 'w') as prop_file:
-    prop_file.write(json.dumps(properties))
+        for asset in data['assets']:
+            property = {
+                'tokenId': asset['token_id'],
+                'numSales': asset['num_sales'],
+                'imageUrl': asset['image_url'],
+                'imagePreviewUrl': asset['image_preview_url'],
+                'imageThumbnailUrl': asset['image_thumbnail_url'],
+                'name': asset['name'],
+                'osLink': asset['permalink'],
+                'lastSale': asset['last_sale'],
+                'ownerAddress': asset['owner']['address']
+            }
+
+            if asset['owner']['user'] is not None:
+                property['ownerName'] = asset['owner']['user']['username']
+
+            if asset['last_sale'] is not None:
+                property['lastSale'] = str(Web3.fromWei(int(asset['last_sale']['total_price']), 'ether'))
+
+            if asset['sell_orders'] is not None:
+                property['salePrice'] = str(Web3.fromWei(int(asset['sell_orders'][0]['base_price']), 'ether'))
+                property['paymentToken'] = asset['sell_orders'][0]['payment_token']
+
+            for trait in asset['traits']:
+                if trait['trait_type'] == 'City Name':
+                    property['city'] = trait['value']
+                if trait['trait_type'] == 'District Name':
+                    property['district'] = trait['value']
+                if trait['trait_type'] == 'Street Name':
+                    property['street'] = trait['value']
+                if trait['trait_type'] == 'Unit':
+                    property['unit'] = trait['value']
+                if trait['trait_type'] == 'Special':
+                    property['city'] = 'Special'
+                    property['district'] = 'Special'
+                    property['street'] = trait['value']
+            
+            properties.append(property)
+        
+        time_taken = time.time() - now
+
+        with open('properties.json', 'w') as prop_file:
+            prop_file.write(json.dumps(properties))
+            prop_file.close()
+            fs.put('properties.json', 'propertys-opensea/properties.json')
+
+        print(time_taken)
+        await session.close()
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.run(main())
+
+with Flow('fetch-collection-data') as flow:
+    fetch_collection_data()
+
+#flow.run()
+flow.register(project_name='propertys-tool')

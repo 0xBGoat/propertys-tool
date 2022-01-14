@@ -7,7 +7,8 @@ import gcsfs
 
 # Setup config and sidebar
 st.set_page_config(
-    page_title="Property's",
+    page_title="Property's Assistant",
+    page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items = {
@@ -41,6 +42,14 @@ st.markdown(
             .blank {
                 display:none
             }
+
+            img {
+                padding-right: 10px
+            }
+
+            .reportview-container .main .block-container {
+                max-width: 1920px
+            }
         </style>
 
     """,
@@ -48,6 +57,13 @@ st.markdown(
 )
 
 WETH_PAYMENT_TOKEN = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+
+PARAMS_DICT = {
+    'overview': [],
+    'owner': ['owner'],
+    'street': ['street'],
+    'district': ['district']
+}
 
 PROP_BRIX_DICT = {
     'Beige Bay': {'house': 10, 'street': 370, 'district': 1470, 'city': 9050},
@@ -200,21 +216,37 @@ def render_overview():
             st.table(frames['topCityOwners'][['ownerName', 'count']])
     
     with st.container():
-        col1, col2 = st.columns([1, 2])
+        col1, col2 = st.columns(2)
 
         with col1:
             st.subheader('🏷️ Cheapest Streets')
-            st.write(df_available_streets)
+            st.table(df_available_streets[['city', 'district', 'street', 'salePrice']].head(10))
 
         with col2:
-            st.subheader('📋 Raw Data')
-            st.write(frames['simple'].sort_values(by='street'))
+            st.subheader('🧱 Best BRIX Value Streets')
+            st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].sort_values(by='brix/eth', ascending=False).head(10))
 
     with st.container():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
-            st.subheader('v0.2.2')
+            st.subheader('v0.3.0')
+            st.markdown("""
+                    ##### ⭐ New Features
+                    * **District Reports** (finally)
+                       * Select a district from the dropdown or start typing to autocomplete
+                       * See information about how many streets and districts have been built, floor price, BRIX yield, owner data and market listings
+                    <br><br>
+                    ##### ✔️ Other Changes
+                    * **Overview Report**
+                       * Removed raw data section
+                       * Added `Best BRIX Value Streets` data sorted by the BRIX-to-ETH ratio of the cheapest available street on the market
+                       * Set `Cheapest Streets` and `Best BRIX Value Streets` to be static tables of the top 10 results
+                """,
+                unsafe_allow_html=True
+            )
+
+            st.subheader('v0.3.0')
             st.markdown("""
                     ##### 🐞 Bug Fixes
                     * Fixed issue with auctions affecting cheapest street prices and removed them from market listings
@@ -356,22 +388,88 @@ def render_street_report(street_name):
             else:
                 st.subheader('No Listings!')
 
+def render_district_report(district_name):
+    st.title(f'District Report - {district_name}')
+
+    frames = get_data_frames()
+    df = frames['all']
+    df_owner_street = frames['ownerStreet']
+    df_owner_district = frames['ownerDistrict']
+
+    df_district = df.loc[df['district']==district_name]
+    df_owner_street_filtered = df_owner_street.loc[df_owner_street['district']==district_name]
+    df_owner_district_filtered = df_owner_district[df_owner_district['district']==district_name]
+
+    owner_property_counts = df_owner_street_filtered.groupby('ownerAddress').propertyCount.sum()
+    df_owner_district_full = pd.merge(df_owner_district_filtered, owner_property_counts, on="ownerAddress")
+    values = {"ownerAddress": df_owner_district_full["ownerAddress"]}
+    df_owner_district_full.fillna(value=values, inplace=True)
+
+    city_name = df_district.iloc[0].city.strip()
+
+    listings = df_district.loc[(df_district['salePrice'] > 0) & (df_district['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+    listings = listings[['ownerAddress', 'ownerName', 'street', 'salePrice', 'lastSale', 'osLink']]
+    listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
+    floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'
+
+    pure_street_count = df_owner_street_filtered.streetCount.sum()
+    district_count = df_owner_district_filtered.districtCount.sum()
+    
+    image_urls = df_district['imageUrl'].drop_duplicates().to_list()
+
+    with st.container():
+        col1, col2, col3 = st.columns([2,1,1])
+
+        with col1:
+            st.image(image_urls, width=250)
+        with col2:
+            st.metric(label='Streets Built', value=f'🛣️ {pure_street_count}')
+            st.metric(label='Districts Built', value=f'🏘️ {district_count}')
+            st.metric(label='Floor Price', value=f'Ξ {floor_price}')
+        with col3:
+            st.metric(label='$BRIX per House', value=f"🧱 {PROP_BRIX_DICT[city_name]['house']}")
+            st.metric(label='$BRIX per Street', value=f"🧱 {PROP_BRIX_DICT[city_name]['street']}")
+            st.metric(label='$BRIX per District', value=f"🧱 {PROP_BRIX_DICT[city_name]['district']}")  
+    
+    with st.container():
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(f"📋 Owner Data")
+            st.write(df_owner_district_full[["ownerAddress", "ownerName", "propertyCount", "streetsInDistrict", "districtCount"]].sort_values(by="propertyCount", ascending=False))
+        with col2:
+            st.subheader(f"🛒 Market Listings")
+            st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
+
+
 def init():
     report_choice_key = 'reportChoice'
-    street_choice_key = 'streetChoice'
     owner_input_key = 'ownerInput'
+    street_choice_key = 'streetChoice'
+    district_choice_key = 'districtChoice'
 
-    report_options = ['overview', 'street', 'owner']
+    report_options = ['overview', 'owner', 'street', 'district']
     street_options = df['street'].drop_duplicates().sort_values().to_list()
+    district_options = df['district'].drop_duplicates().sort_values().to_list()
     
     query_params = st.experimental_get_query_params()
     query_report_choice = query_params['report'][0] if 'report' in query_params else None
-    query_street_choice = query_params['street'][0] if 'street' in query_params else None
     query_owner_input = query_params['owner'][0] if 'owner' in query_params else None
+    query_street_choice = query_params['street'][0] if 'street' in query_params else None
+    query_district_choice = query_params['district'][0] if 'district' in query_params else None
 
     st.session_state[report_choice_key] = query_report_choice if query_report_choice in report_options else report_options[0]
-    st.session_state[street_choice_key] = query_street_choice if query_street_choice in street_options else street_options[0]
     st.session_state[owner_input_key] = query_owner_input if query_owner_input is not None else ''
+    st.session_state[street_choice_key] = query_street_choice if query_street_choice in street_options else street_options[0]
+    st.session_state[district_choice_key] = query_district_choice if query_district_choice in district_options else district_options[0]
+
+    def reset_params(report_type, query_params):
+        # Clear any params not related to the report_type selected
+        for key, value in PARAMS_DICT.items():
+            if key != report_type:
+                for param in value:
+                    if param in query_params:
+                        query_params.pop(param) 
 
     def update_session_state():
         query_params = st.experimental_get_query_params()
@@ -379,22 +477,17 @@ def init():
         report_choice = st.session_state[report_choice_key]
         query_params['report'] = report_choice     
 
-        if report_choice == 'street':
-            query_params['street'] = st.session_state[street_choice_key]
-            
-            if 'owner' in query_params:
-                query_params.pop('owner')
-        elif report_choice == 'owner':
+        if report_choice == 'owner':
             query_params['owner'] = st.session_state[owner_input_key]
-            
-            if 'street' in query_params:
-                query_params.pop('street')
+            reset_params('owner', query_params)
+        elif report_choice == 'street':
+            query_params['street'] = st.session_state[street_choice_key]
+            reset_params('street', query_params)
+        elif report_choice == 'district':
+            query_params['district'] = st.session_state[district_choice_key]
+            reset_params('district', query_params)
         else:
-            if 'owner' in query_params:
-                query_params.pop('owner')
-
-            if 'street' in query_params:
-                query_params.pop('street')               
+            reset_params('overview', query_params)               
 
         st.experimental_set_query_params(**query_params)
 
@@ -407,13 +500,6 @@ def init():
 
     if report_choice == 'overview':
         render_overview()
-    elif report_choice == 'street':
-        with st.form(key='street_form'):
-            with st.sidebar:
-                st.selectbox(label='Select a street (or start typing)', options=street_options, key=street_choice_key)  
-                st.form_submit_button(label='Submit', on_click=update_session_state)
-        
-        render_street_report(st.session_state[street_choice_key])
     elif report_choice == 'owner':
         owner_input = st.session_state[owner_input_key]
 
@@ -426,5 +512,18 @@ def init():
             render_owner_report(owner_input)
         else:
             st.title('Owner Report')
+    elif report_choice == 'street':
+        with st.form(key='street_form'):
+            with st.sidebar:
+                st.selectbox(label='Select a street (or start typing)', options=street_options, key=street_choice_key)  
+                st.form_submit_button(label='Submit', on_click=update_session_state)
+        
+        render_street_report(st.session_state[street_choice_key])
+    elif report_choice == 'district':
+        with st.form(key='district_form'):
+            with st.sidebar:
+                st.selectbox(label='Select a district (or start typing', options=district_options, key=district_choice_key)
+                st.form_submit_button(label='Submit', on_click=update_session_state)
 
+        render_district_report(st.session_state[district_choice_key])
 init()
