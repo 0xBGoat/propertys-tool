@@ -340,7 +340,7 @@ def render_street_report(street_name):
 
     df_street = df.loc[df['street']==street_name]
     city_name = df_street.iloc[0].city.strip()
-    image_url = df_street['imagePreviewUrl'].values[0]
+    image_url = df_street['imageUrl'].values[0]
 
     listings = df_street.loc[(df_street['salePrice'] > 0) & (df_street['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
     floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
@@ -351,12 +351,12 @@ def render_street_report(street_name):
         .sort_values(by='propertyCount', ascending=False).reset_index(drop=True)
     
     with st.container():
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns([1,2,2])
         streets_completed = df_owner_street_filtered.streetCount.sum()
         street_owner_count = len(df_owner_street_filtered.loc[df_owner_street_filtered['streetCount']>0])
 
         with col1:
-            st.image(image_url, use_column_width='auto')
+            st.image(image_url, width=250)
         with col2:
             if city_name != 'Special':
                 st.metric(label='Pure Streets', value=f'🛣️ {streets_completed} / 10')
