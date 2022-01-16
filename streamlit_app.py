@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from web3 import Web3
 import gcsfs
+from streamlit_echarts import st_echarts
 
 # Setup config and sidebar
 st.set_page_config(
@@ -101,9 +102,6 @@ SPECIAL_BRIX_DICT = {
     'The Sunken City': 1200
 }
 
-def make_clickable(url, text):
-    return f'<a target="_blank" href="{url}">{text}</a>'
-
 @st.experimental_memo(ttl=300)
 def load_data():
     df = pd.read_json(
@@ -170,6 +168,9 @@ def get_data_frames():
         'topCityOwners': df_top_city_owners.loc[df_top_city_owners['count']>0]
     }
 
+def make_clickable(url, text):
+    return f'<a target="_blank" href="{url}">{text}</a>'
+
 def render_overview():
     st.title('Overview')
 
@@ -233,6 +234,18 @@ def render_overview():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.4.0')
+            st.markdown("""
+                    ##### ⭐ New Features
+                    * **Updated Owner Reports**
+                       * Now displays a pie chart representing the owner's holdings by city
+                       * Displays a random property from the owner's holdings each time the report is loaded
+                       * Added **Market Listings** belonging to the owner
+                       * Tweaked the columns displayed in the Owner Holdings table
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.3.1')
             st.markdown("""
                     ##### 🐞 Bug Fixes
@@ -321,25 +334,94 @@ def render_owner_report(owner_name):
     if owner_name is not None:
         owner_label = 'ownerAddress' if owner_name_lower.startswith('0x') else 'ownerNameLower'
 
-        df_owner = df.loc[df[owner_label]==owner_name_lower][['ownerAddress','ownerName','city','district','street']]
+        df_owner = df.loc[df[owner_label]==owner_name_lower]
         streets_owned = df_owner_street.loc[df_owner_street[owner_label]==owner_name_lower].streetCount.sum()
         districts_owned = df_owner_district.loc[df_owner_district[owner_label]==owner_name_lower].districtCount.sum()
         cities_owned = df_owner_city.loc[df_owner_city[owner_label]==owner_name_lower].cityCount.sum()
 
+        listings = df_owner.loc[(df_owner['salePrice'] > 0) & (df_owner['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+
+        # Create a radial plot of the owner's properties by city
+        df_owner_cities = df_owner.groupby('city').size().reset_index(name='count')
+        df_owner_cities.rename(columns={'city': 'name', 'count': 'value'}, inplace=True)
+
+        COLOR_MAP = {
+            'Beige Bay': '#D6C58D',
+            'Orange Oasis': '#DF9F30',
+            'Yellow Yards': '#E8D322',
+            'Green Grove': '#00AB78',
+            'Purple Palms': '#8F00FF',
+            'Blue Bayside': '#2F5BAC',
+            'X AE X-II': '#FF0500',
+            'Special': '#808080'
+        }
+
+        colors = []
+
+        # Set the color array for each city in the result
+        owner_dict = df_owner_cities[['name', 'value']].to_dict(orient='records')
+
+        for row in owner_dict:
+            colors.append(COLOR_MAP[row['name'].strip()])   
+
+        pie_chart_options = {
+            'title': {'text': 'Holdings by City', 'left': 'center'},
+            'tooltip': {'trigger': 'item'},
+            'legend': None,
+            'series': [
+                {
+                    'name': 'Properties Owned',
+                    'type': 'pie',
+                    'color': colors,
+                    'radius': '50%',
+                    'data': df_owner_cities[['name', 'value']].to_dict(orient='records'),
+                    'emphasis': {
+                        'itemStyle': {
+                            'shadowBlur': 10,
+                            'shadowOffsetX': 0,
+                            'shadowColor': 'rgba(0,0,0,0.5)'
+                        }
+                    }
+                }
+            ],
+            'grid': {
+                'left': 0,
+                'top': 0,
+                'right': 0,
+                'bottom': 0
+            }
+        }
+
         with st.container():
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4 = st.columns([1,1,2,2])
         
             with col1:
-                st.metric(label='Properties Owned', value=f"🏠 {len(df_owner)}")        
+                image_url = df_owner['imageUrl'].sample().values[0]
+                st.image(image_url, width=250, caption='Holding Highlight')  
             with col2:
+                st.metric(label='Properties Owned', value=f"🏠 {len(df_owner)}")
                 st.metric(label='Streets Owned', value=f"🛣️ {streets_owned}")
+                st.metric(label='Districts Owned', value=f"🏘️ {districts_owned}") 
+                st.metric(label='Cities Owned', value=f"🏙️ {cities_owned}")       
             with col3:
-                st.metric(label='Districts Owned', value=f"🏘️ {districts_owned}")
-            with col4:
-                st.metric(label='Cities Owned', value=f"🏙️ {cities_owned}")
-            
-        st.subheader('📋 Property Holdings')
-        st.write(df_owner.sort_values(by='street').reset_index(drop=True))
+                st_echarts(options=pie_chart_options, height='400px')    
+        
+        with st.container():
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader('📋 Property Holdings')
+                st.write(df_owner[['city', 'district', 'street', 'lastSale', 'numSales']].sort_values(by='street').reset_index(drop=True))
+            with col2:
+                st.subheader('🛒 Market Listings')
+
+                if len(listings) > 0:
+                    listings = listings[['city', 'district', 'street', 'salePrice', 'lastSale', 'osLink']]
+                    listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
+                    st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
+                else:
+                    st.subheader('No Listings!')
+
 
 def render_street_report(street_name):
     st.title(f'Street Report - {street_name}')
@@ -504,7 +586,7 @@ def init():
 
     with st.sidebar:
         st.title("Property's Virtual Realty Assistant")
-        st.caption('v0.3.1')
+        st.caption('v0.4.00')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
