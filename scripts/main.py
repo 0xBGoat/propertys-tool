@@ -28,7 +28,7 @@ def run(event, context):
         blob = bucket.blob('properties.json')
 
         conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300, ssl=False)
-        session = aiohttp.ClientSession(connector=conn)
+        session = aiohttp.ClientSession(connector=conn, headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36"})
         urls = [f"https://api.opensea.io/api/v1/assets?collection=propertysofficial&order_by=pk&order_direction=asc&offset={i * 50}&limit=50" for i in range(120)]
 
         results = {}
