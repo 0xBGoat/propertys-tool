@@ -543,7 +543,7 @@ def init():
 
     report_options = ['overview', 'owner', 'street', 'district']
     street_options = df['street'].drop_duplicates().sort_values().to_list()
-    district_options = df['district'].drop_duplicates().sort_values().to_list()
+    district_options = df[df['district']!='Special']['district'].drop_duplicates().sort_values().to_list()
     
     query_params = st.experimental_get_query_params()
     query_report_choice = query_params['report'][0] if 'report' in query_params else None
@@ -615,7 +615,7 @@ def init():
     elif report_choice == 'district':
         with st.form(key='district_form'):
             with st.sidebar:
-                st.selectbox(label='Select a district (or start typing', options=district_options, key=district_choice_key)
+                st.selectbox(label='Select a district (or start typing)', options=district_options, key=district_choice_key)
                 st.form_submit_button(label='Submit', on_click=update_session_state)
 
         render_district_report(st.session_state[district_choice_key])
