@@ -591,8 +591,6 @@ def init():
 
     report_choice = st.session_state[report_choice_key]
 
-    st.warning("⚠️ Due to changes to the OpenSea API, the data in the app was last updated on January 31st. I am working on a fix but unfortunately I cannot provide an ETA on when live data will return.")
-
     if report_choice == 'overview':
         render_overview()
     elif report_choice == 'owner':
