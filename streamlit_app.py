@@ -22,6 +22,7 @@ st.markdown(
         <style>
             /*Comment out this line when developing*/
             #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
 
             @font-face {
                 font-family: 'ARCO';
