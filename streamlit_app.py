@@ -64,15 +64,26 @@ st.markdown(
 
             }
 
+            h1 {
+                font-size: 34px;
+            }
+
+            .viewerBadge_link__1S137 {
+                display: none;
+            }
+
             h1, h2, h3 {
-                font-family: 'ARCO';
-                color: #8f00ff;
+                color: #222222;
                 font-family: 'Futura Round Medium', arial, sans-serif;
                 font-weight: normal;
             }
 
-            h3 {
-                
+            .css-18e3th9 {
+                padding: 0 40px;
+            }
+
+            .css-zbg2rx {
+                padding: 30px 20px;
             }
 
             body,
