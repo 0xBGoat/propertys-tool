@@ -27,13 +27,18 @@ def run(event, context):
         bucket = storage_client.bucket('propertys-opensea')
         blob = bucket.blob('properties.json')
 
+        API_KEY = os.environ.get('OPEN_SEA_API_KEY', 'Specified environment variable is not set.')
+
         conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300, ssl=False)
-        session = aiohttp.ClientSession(connector=conn, headers={"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36"})
+        session = aiohttp.ClientSession(connector=conn, headers={
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
+            "X-API-KEY": API_KEY
+        })
         urls = [f"https://api.opensea.io/api/v1/assets?collection=propertysofficial&order_by=pk&order_direction=asc&offset={i * 50}&limit=50" for i in range(120)]
 
         results = {}
 
-        conc_req = 5
+        conc_req = 1
         now = time.time()
         await gather_with_concurrency(conc_req, *[get_async(i, session, results) for i in urls])
 
@@ -62,17 +67,17 @@ def run(event, context):
 
             for trait in asset['traits']:
                 if trait['trait_type'] == 'City Name':
-                    property['city'] = trait['value']
+                    property['city'] = trait['value'].strip()
                 if trait['trait_type'] == 'District Name':
-                    property['district'] = trait['value']
+                    property['district'] = trait['value'].strip()
                 if trait['trait_type'] == 'Street Name':
-                    property['street'] = trait['value']
+                    property['street'] = trait['value'].strip()
                 if trait['trait_type'] == 'Unit':
                     property['unit'] = trait['value']
                 if trait['trait_type'] == 'Special':
                     property['city'] = 'Special'
                     property['district'] = 'Special'
-                    property['street'] = trait['value']
+                    property['street'] = trait['value'].strip()
             
             properties.append(property)
         
