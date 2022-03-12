@@ -1,9 +1,7 @@
-import requests, json, urllib.parse, pathlib, datetime, random
+import datetime, random
 import streamlit as st
 import pandas as pd
 import numpy as np
-from web3 import Web3
-import gcsfs
 from streamlit_echarts import st_echarts
 
 # Setup config and sidebar
@@ -699,7 +697,7 @@ def render_city_report(city_name):
             st.download_button(
                 "Download Owner Snapshot",
                 df_city[['ownerAddress', 'tokenId']].to_csv(index=False).encode('utf-8'),
-                f"{city_name.strip().lower().replace(' ', '-')}-snapshot.csv",
+                f"{city_name.strip().lower().replace(' ', '-')}-snapshot-{datetime.datetime.today().strftime('%Y%m%d')}.csv",
                 "text/csv",
                 key="download-csv"
             )
