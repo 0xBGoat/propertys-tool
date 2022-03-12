@@ -75,17 +75,17 @@ def run(event, context):
 
             for trait in asset['traits']:
                 if trait['trait_type'] == 'City Name':
-                    property['city'] = trait['value']
+                    property['city'] = trait['value'].strip()
                 if trait['trait_type'] == 'District Name':
-                    property['district'] = trait['value']
+                    property['district'] = trait['value'].strip()
                 if trait['trait_type'] == 'Street Name':
-                    property['street'] = trait['value']
+                    property['street'] = trait['value'].strip()
                 if trait['trait_type'] == 'Unit':
                     property['unit'] = trait['value']
                 if trait['trait_type'] == 'Special':
                     property['city'] = 'Special'
                     property['district'] = 'Special'
-                    property['street'] = trait['value']
+                    property['street'] = trait['value'].strip()
             
             properties.append(property)
         

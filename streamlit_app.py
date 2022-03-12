@@ -1,9 +1,7 @@
-import requests, json, urllib.parse, pathlib, datetime
+import datetime, random
 import streamlit as st
 import pandas as pd
 import numpy as np
-from web3 import Web3
-import gcsfs
 from streamlit_echarts import st_echarts
 
 # Setup config and sidebar
@@ -318,6 +316,17 @@ def render_overview():
         st.subheader('Release Notes')
 
         with st.expander(label="Click to expand"):
+            st.subheader('v0.5.0')
+            st.markdown("""
+                    ##### ⭐ New Features
+                    * **City Reports**
+                       * Select a city from the dropdown or start typing
+                       * See information about how many streets, districts and cities have been built, floor price, $BRIX yield, owner data and market listings
+                       * Added button to download a snapshot of all properties and their owners in CSV format
+                """,
+                unsafe_allow_html=True
+            )
+
             st.subheader('v0.4.0')
             st.markdown("""
                     ##### ⭐ New Features
@@ -618,27 +627,117 @@ def render_district_report(district_name):
             st.subheader(f"🛒 Market Listings")
             st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
 
+def render_city_report(city_name):
+    st.title(f'City Report - {city_name}') 
+
+    # There are some errant images for Beige Bay that say "Pidgeon Park" instead of "Pigeon Park"
+    bad_image = 'https://lh3.googleusercontent.com/5wlasmr-xFirlE2SX2rmnCg3A88Hu2El5k9LzptwMhlhFsmsxe_VdtHIencLJp7iB7gedQohOXyZ_Ts6G7aHByR-a9GOsay1Z-7m7g'
+
+    frames = get_data_frames()
+    df = frames['all']
+    df_owner_street = frames['ownerStreet']
+    df_owner_city = frames['ownerCity']
+
+    df_city = df.loc[df['city']==city_name]
+    df_owner_street_filtered = df_owner_street.loc[df_owner_street['city']==city_name]
+    df_owner_city_filtered = df_owner_city[df_owner_city['city']==city_name]
+
+    owner_property_counts = df_owner_street_filtered.groupby('ownerAddress').propertyCount.sum()
+    owner_street_counts = df_owner_street_filtered.groupby('ownerAddress').streetCount.sum()
+    df_owner_city_full = pd.merge(pd.merge(df_owner_city_filtered, owner_property_counts, on="ownerAddress"), owner_street_counts, on="ownerAddress")
+    values = {"ownerAddress": df_owner_city_full["ownerAddress"]}
+    df_owner_city_full.fillna(value=values, inplace=True)
+
+    # Build an array of arrays with images of each district
+    image_urls = []
+    districts_in_city = df_owner_street_filtered['district'].drop_duplicates().to_list()
+
+    for district in districts_in_city:
+        district_images = df.loc[df['district']==district]['imageUrl'].drop_duplicates().to_list()
+        image_urls.append(district_images)
+
+    # Choose the array of images for a random district in the city
+    district_image_urls = random.choice(image_urls)
+
+    # Remove the bad image URL if it exists
+    if bad_image in district_image_urls:
+        district_image_urls.remove(bad_image)
+
+    pure_street_count = df_owner_city_full.streetCount.sum()
+    district_count = df_owner_city_full.districtsInCity.sum()
+    city_count = df_owner_city_full.cityCount.sum()
+
+    listings = df_city.loc[(df_city['salePrice'] > 0) & (df_city['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+    listings = listings[['ownerAddress', 'ownerName', 'district', 'street', 'salePrice', 'lastSale', 'osLink']]
+    listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
+    floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'
+
+    with st.container():
+        col1, col2, col3 = st.columns([2,1,1])
+
+        with col1:
+            st.image(district_image_urls, width=250)
+        with col2:
+            st.metric(label='Streets Built', value=f'🛣️ {pure_street_count}')
+            st.metric(label='Districts Built', value=f'🏘️ {district_count}')
+            st.metric(label='Cities Built', value=f'🏘️ {city_count}')
+            st.metric(label='Floor Price', value=f'Ξ {floor_price}')
+        with col3:
+            st.metric(label='$BRIX per House', value=f"🧱 {PROP_BRIX_DICT[city_name]['house']}")
+            st.metric(label='$BRIX per Street', value=f"🧱 {PROP_BRIX_DICT[city_name]['street']}")
+            st.metric(label='$BRIX per District', value=f"🧱 {PROP_BRIX_DICT[city_name]['district']}")
+            st.metric(label='$BRIX per City', value=f"🧱 {PROP_BRIX_DICT[city_name]['city']}")
+
+    with st.container():
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(f"📋 Owner Data")
+            st.write(df_owner_city_full[["ownerAddress", "ownerName", "propertyCount", "streetCount", "districtsInCity", "cityCount"]].sort_values(by="propertyCount", ascending=False))
+            st.download_button(
+                "Download Owner Snapshot",
+                df_city[['ownerAddress', 'tokenId']].to_csv(index=False).encode('utf-8'),
+                f"{city_name.strip().lower().replace(' ', '-')}-snapshot-{datetime.datetime.today().strftime('%Y%m%d')}.csv",
+                "text/csv",
+                key="download-csv"
+            )
+        with col2:
+            st.subheader(f"🛒 Market Listings")
+            st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
+
 
 def init():
     report_choice_key = 'reportChoice'
     owner_input_key = 'ownerInput'
     street_choice_key = 'streetChoice'
     district_choice_key = 'districtChoice'
+    city_choice_key = 'cityChoice'
 
-    report_options = ['overview', 'owner', 'street', 'district']
+    report_options = ['overview', 'owner', 'street', 'district', 'city']
     street_options = df['street'].drop_duplicates().sort_values().to_list()
     district_options = df[df['district']!='Special']['district'].drop_duplicates().sort_values().to_list()
+    city_options = [
+        'Beige Bay',
+        'Orange Oasis',
+        'Yellow Yards',
+        'Green Grove',
+        'Purple Palms',
+        'Blue Bayside',
+        'X AE X-II'
+    ]
     
     query_params = st.experimental_get_query_params()
     query_report_choice = query_params['report'][0] if 'report' in query_params else None
     query_owner_input = query_params['owner'][0] if 'owner' in query_params else None
     query_street_choice = query_params['street'][0] if 'street' in query_params else None
     query_district_choice = query_params['district'][0] if 'district' in query_params else None
+    query_city_choice = query_params['city'][0] if 'city' in query_params else None
 
     st.session_state[report_choice_key] = query_report_choice if query_report_choice in report_options else report_options[0]
     st.session_state[owner_input_key] = query_owner_input if query_owner_input is not None else ''
     st.session_state[street_choice_key] = query_street_choice if query_street_choice in street_options else street_options[0]
     st.session_state[district_choice_key] = query_district_choice if query_district_choice in district_options else district_options[0]
+    st.session_state[city_choice_key] = query_city_choice if query_city_choice in city_options else city_options[0]
 
     def reset_params(report_type, query_params):
         # Clear any params not related to the report_type selected
@@ -663,6 +762,9 @@ def init():
         elif report_choice == 'district':
             query_params['district'] = st.session_state[district_choice_key]
             reset_params('district', query_params)
+        elif report_choice == 'city':
+            query_params['city'] = st.session_state[city_choice_key]
+            reset_params('city', query_params)
         else:
             reset_params('overview', query_params)               
 
@@ -670,7 +772,7 @@ def init():
 
     with st.sidebar:
         st.title("Property's Virtual Realty Assistant")
-        st.caption('v0.4.0')
+        st.caption('v0.5.0')
         st.selectbox('Select a Report Type', report_options, on_change=update_session_state, key=report_choice_key, format_func=lambda x: x.title())
 
     report_choice = st.session_state[report_choice_key]
@@ -703,4 +805,11 @@ def init():
                 st.form_submit_button(label='Submit', on_click=update_session_state)
 
         render_district_report(st.session_state[district_choice_key])
+    elif report_choice == 'city':
+        with st.form(key='city_form'):
+            with st.sidebar:
+                st.selectbox(label='Select a city (or start typing)', options=city_options, key=city_choice_key)
+                st.form_submit_button(label='Submit', on_click=update_session_state)
+
+        render_city_report(st.session_state[city_choice_key])
 init()
