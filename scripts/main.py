@@ -1,46 +1,54 @@
-import json, asyncio, aiohttp, time, os
+import json, requests, time, os
 from web3 import Web3
 from google.cloud import storage
+from requests.adapters import HTTPAdapter, Retry
 
 def run(event, context):
     data = {'assets': []}
     properties = []
 
-    async def gather_with_concurrency(n, *tasks):
-        semaphore = asyncio.Semaphore(n)
+    def main():
+        OS_BASE_URL = 'https://api.opensea.io/api/v1/assets'
+        API_KEY = os.environ.get('OPEN_SEA_API_KEY', 'Specified environment variable is not set.')
 
-        async def sem_task(task):
-            async with semaphore:
-                return await task
+        params = {
+            'collection': 'propertysofficial',
+            'include_orders': 'true',
+            'limit': '50'
+        }
 
-        return await asyncio.gather(*(sem_task(task) for task in tasks))
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36',
+            'X-API-KEY': API_KEY
+        }
 
-    async def get_async(url, session, results):
-        print(f"Making request with url: {url}")
-        async with session.get(url) as response:
-            response_json = await response.json()
-            
-            data['assets'].extend(response_json['assets'])
-
-    async def main():
         storage_client = storage.Client()
         bucket = storage_client.bucket('propertys-opensea')
         blob = bucket.blob('properties.json')
 
-        API_KEY = os.environ.get('OPEN_SEA_API_KEY', 'Specified environment variable is not set.')
+        with requests.Session() as session:
+            retry = Retry(
+                total=5,
+                status_forcelist=[500, 502, 503, 504],
+                backoff_factor=0.1
+            )
 
-        conn = aiohttp.TCPConnector(limit=None, ttl_dns_cache=300, ssl=False)
-        session = aiohttp.ClientSession(connector=conn, headers={
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
-            "X-API-KEY": API_KEY
-        })
-        urls = [f"https://api.opensea.io/api/v1/assets?collection=propertysofficial&order_by=pk&order_direction=asc&offset={i * 50}&limit=50" for i in range(120)]
+            session.mount(OS_BASE_URL, HTTPAdapter(max_retries=retry))
 
-        results = {}
+            while True:
+                print(f"Making request with params: {params}")
+                (r := session.get(OS_BASE_URL, params=params, headers=headers)).raise_for_status()
+                print(r.status_code)
+                response_json = r.json()
+                data['assets'].extend(response_json['assets'])
 
-        conc_req = 1
+                if (cursor := response_json['next']):
+                    print(f"Next cursor: {cursor}")
+                    params['cursor'] = cursor
+                else:
+                    break
+
         now = time.time()
-        await gather_with_concurrency(conc_req, *[get_async(i, session, results) for i in urls])
 
         for asset in data['assets']:
             property = {
@@ -67,17 +75,17 @@ def run(event, context):
 
             for trait in asset['traits']:
                 if trait['trait_type'] == 'City Name':
-                    property['city'] = trait['value'].strip()
+                    property['city'] = trait['value']
                 if trait['trait_type'] == 'District Name':
-                    property['district'] = trait['value'].strip()
+                    property['district'] = trait['value']
                 if trait['trait_type'] == 'Street Name':
-                    property['street'] = trait['value'].strip()
+                    property['street'] = trait['value']
                 if trait['trait_type'] == 'Unit':
                     property['unit'] = trait['value']
                 if trait['trait_type'] == 'Special':
                     property['city'] = 'Special'
                     property['district'] = 'Special'
-                    property['street'] = trait['value'].strip()
+                    property['street'] = trait['value']
             
             properties.append(property)
         
@@ -86,8 +94,5 @@ def run(event, context):
         blob.upload_from_string(json.dumps(properties))
 
         print(time_taken)
-        await session.close()
 
-    # Uncomment this line when running on Windows
-    #asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main())
+    main()
