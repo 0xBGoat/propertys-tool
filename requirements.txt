@@ -3,4 +3,4 @@ pandas
 streamlit_echarts
 requests
 web3
-streamlit_echarts
+gcsfs
