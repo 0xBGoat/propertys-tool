@@ -29,7 +29,7 @@ def run(event, context):
         with requests.Session() as session:
             retry = Retry(
                 total=5,
-                status_forcelist=[500, 502, 503, 504],
+                status_forcelist=[495, 500, 502, 503, 504],
                 backoff_factor=0.1
             )
 
