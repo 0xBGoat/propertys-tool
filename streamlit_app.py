@@ -258,7 +258,7 @@ def render_overview():
 
     frames = get_data_frames()
 
-    df_buy_now_properties = df.where((df['salePrice'] > 0) & (df['paymentToken'] != WETH_PAYMENT_TOKEN))
+    df_buy_now_properties = df.where((df['salePrice'] > 0) & (df['saleType'] == 'basic'))
     df_available_streets = df_buy_now_properties.groupby(['city', 'district', 'street'])['salePrice'] \
             .apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None) \
             .to_frame().dropna().sort_values(by='salePrice').reset_index()
@@ -432,7 +432,7 @@ def render_owner_report(owner_name):
         districts_owned = df_owner_district.loc[df_owner_district[owner_label]==owner_name_lower].districtCount.sum()
         cities_owned = df_owner_city.loc[df_owner_city[owner_label]==owner_name_lower].cityCount.sum()
 
-        listings = df_owner.loc[(df_owner['salePrice'] > 0) & (df_owner['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+        listings = df_owner.loc[(df_owner['salePrice'] > 0) & (df_owner['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
 
         # Create a radial plot of the owner's properties by city
         df_owner_cities = df_owner.groupby('city').size().reset_index(name='count')
@@ -528,7 +528,7 @@ def render_street_report(street_name):
     city_name = df_street.iloc[0].city.strip()
     image_url = df_street['imageUrl'].values[0]
 
-    listings = df_street.loc[(df_street['salePrice'] > 0) & (df_street['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+    listings = df_street.loc[(df_street['salePrice'] > 0) & (df_street['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
     floor_price = df_street['salePrice'].min() if df_street['salePrice'].min() > 0 else 'N/A'
     prices = df_street['salePrice']
     full_street_price = f'{prices.sort_values().head(7).sum():.2f}' if len(listings) > 6 else 'N/A'    
@@ -593,7 +593,7 @@ def render_district_report(district_name):
 
     city_name = df_district.iloc[0].city.strip()
 
-    listings = df_district.loc[(df_district['salePrice'] > 0) & (df_district['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+    listings = df_district.loc[(df_district['salePrice'] > 0) & (df_district['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
     listings = listings[['ownerAddress', 'ownerName', 'street', 'salePrice', 'lastSale', 'osLink']]
     listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
     floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'
@@ -667,7 +667,7 @@ def render_city_report(city_name):
     district_count = df_owner_city_full.districtsInCity.sum()
     city_count = df_owner_city_full.cityCount.sum()
 
-    listings = df_city.loc[(df_city['salePrice'] > 0) & (df_city['paymentToken'] != WETH_PAYMENT_TOKEN)].sort_values(by='salePrice').fillna('Mint')
+    listings = df_city.loc[(df_city['salePrice'] > 0) & (df_city['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
     listings = listings[['ownerAddress', 'ownerName', 'district', 'street', 'salePrice', 'lastSale', 'osLink']]
     listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
     floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'

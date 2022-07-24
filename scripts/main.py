@@ -70,8 +70,8 @@ def run(event, context):
                 property['lastSale'] = str(Web3.fromWei(int(asset['last_sale']['total_price']), 'ether'))
 
             if asset['seaport_sell_orders'] is not None:
-                property['salePrice'] = str(Web3.fromWei(int(asset['seaport_sell_orders'][0]['base_price']), 'ether'))
-                property['paymentToken'] = asset['seaport_sell_orders'][0]['payment_token']
+                property['salePrice'] = str(Web3.fromWei(int(asset['seaport_sell_orders'][0]['current_price']), 'ether'))
+                property['saleType'] = asset['seaport_sell_orders'][0]['sale_type']
 
             for trait in asset['traits']:
                 if trait['trait_type'] == 'City Name':
