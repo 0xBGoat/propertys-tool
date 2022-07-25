@@ -307,11 +307,17 @@ def render_overview():
 
         with col1:
             st.subheader('🏷️ Cheapest Streets')
-            st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].head(10))
+            if len(df_available_streets) > 0:
+                st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].head(10))
+            else:
+                st.subheader('No full streets listed!')
 
         with col2:
             st.subheader('🧱 Best BRIX Value Streets')
-            st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].sort_values(by='brix/eth', ascending=False).head(10))
+            if len(df_available_streets) > 0:
+                st.table(df_available_streets[['city', 'district', 'street', 'salePrice', 'brix/eth']].sort_values(by='brix/eth', ascending=False).head(10))
+            else:
+                st.subheader('No full streets listed!')
 
     with st.container():
         st.subheader('Release Notes')
