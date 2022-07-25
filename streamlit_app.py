@@ -263,11 +263,12 @@ def render_overview():
             .apply(lambda x: x.sort_values().head(7).sum() if x.count() > 6 else None) \
             .to_frame().dropna().sort_values(by='salePrice').reset_index()
 
-    df_available_streets = df_available_streets[df_available_streets.city != 'Special']
-    df_available_streets['brixYield'] = df_available_streets \
-        .apply(lambda x: PROP_BRIX_DICT[str(x['city']).strip()]['street'], axis=1)
-    df_available_streets['brix/eth'] = df_available_streets['brixYield'] / df_available_streets['salePrice']
-    df_available_streets = df_available_streets.round({'salePrice': 2, 'brix/eth': 2})
+    if (len(df_available_streets) > 0):
+        df_available_streets = df_available_streets[df_available_streets.city != 'Special']
+        df_available_streets['brixYield'] = df_available_streets \
+            .apply(lambda x: PROP_BRIX_DICT[str(x['city']).strip()]['street'], axis=1)
+        df_available_streets['brix/eth'] = df_available_streets['brixYield'] / df_available_streets['salePrice']
+        df_available_streets = df_available_streets.round({'salePrice': 2, 'brix/eth': 2})
     
     with st.container():
         col1, col2, col3, col4 = st.columns(4)
