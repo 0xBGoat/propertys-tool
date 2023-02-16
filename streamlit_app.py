@@ -184,7 +184,7 @@ SPECIAL_BRIX_DICT = {
     'The Sunken City': 1200
 }
 
-@st.experimental_memo(ttl=300)
+@st.cache_data(ttl=300)
 def load_data():
     df = pd.read_json(
         'gcs://propertys-opensea/properties.json',
@@ -201,7 +201,7 @@ def load_data():
 
 df = load_data()
 
-@st.experimental_memo(ttl=60)
+@st.cache_data(ttl=60)
 def get_data_frames():
     df_simple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
 
