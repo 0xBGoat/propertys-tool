@@ -2,5 +2,6 @@ streamlit
 pandas
 streamlit_echarts
 requests
+protobug==3.19.5
 web3
 gcsfs
