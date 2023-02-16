@@ -196,11 +196,11 @@ def load_data():
         storage_options={'token': 'anon'}
     )
     
-    values = {"ownerName": df['ownerAddress']}
-    df.fillna(value=values, inplace=True)
+    # values = {"ownerName": df['ownerAddress']}
+    # df.fillna(value=values, inplace=True)
 
     # Add a lowercased owner name column for easier lookups
-    df['ownerNameLower'] = df['ownerName'].str.lower()
+    # df['ownerNameLower'] = df['ownerName'].str.lower()
 
     return df
 
@@ -208,38 +208,38 @@ df = load_data()
 
 #@st.cache_data(ttl=60)
 def get_data_frames():
-    df_simple = df[['ownerAddress', 'ownerName', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
+    df_simple = df[['ownerAddress', 'city', 'district', 'street', 'numSales', 'lastSale', 'salePrice']]
 
     # TODO: Figure out a more efficient way to do this
     # Street level grouping
-    gb_owner_street = df.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district', 'street'], dropna=False)
+    gb_owner_street = df.groupby(['ownerAddress', 'city', 'district', 'street'], dropna=False)
     df_owner_street = gb_owner_street.size().reset_index(name='propertyCount')
     df_owner_street['streetCount'] = np.floor_divide(df_owner_street['propertyCount'], 7)
 
     # District level grouping
-    gb_owner_district = df_owner_street.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city', 'district'], dropna=False)
+    gb_owner_district = df_owner_street.groupby(['ownerAddress', 'city', 'district'], dropna=False)
     df_owner_district = gb_owner_district.streetCount.agg(sum).reset_index(name='streetsInDistrict')
     df_owner_district['districtCount'] = np.floor_divide(df_owner_district['streetsInDistrict'], 3)
 
     # City level grouping
-    gb_owner_city = df_owner_district.groupby(['ownerAddress', 'ownerName', 'ownerNameLower', 'city'], dropna=False)
+    gb_owner_city = df_owner_district.groupby(['ownerAddress', 'city'], dropna=False)
     df_owner_city = gb_owner_city.districtCount.agg(sum).reset_index(name='districtsInCity')
     df_owner_city['cityCount'] = np.floor_divide(df_owner_city['districtsInCity'], 3)   
 
     # Create top 10 dataframes (not worth doing City owners yet)
-    df_top_owners = df.groupby(['ownerAddress', 'ownerName'], dropna=False) \
+    df_top_owners = df.groupby(['ownerAddress'], dropna=False) \
         .size().reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_street_owners = df_owner_street.groupby(['ownerAddress','ownerName'], dropna=False) \
+    df_top_street_owners = df_owner_street.groupby(['ownerAddress'], dropna=False) \
         .streetCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_street_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_district_owners = df_owner_district.groupby(['ownerAddress','ownerName'], dropna=False) \
+    df_top_district_owners = df_owner_district.groupby(['ownerAddress'], dropna=False) \
         .districtCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_district_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
-    df_top_city_owners = df_owner_city.groupby(['ownerAddress','ownerName'], dropna=False) \
+    df_top_city_owners = df_owner_city.groupby(['ownerAddress'], dropna=False) \
         .cityCount.agg(sum).reset_index(name='count').sort_values(by='count', ascending=False).head(10)
     df_top_city_owners.index = pd.RangeIndex(start=1, stop=11, step=1)
 
@@ -296,16 +296,16 @@ def render_overview():
 
         with col1:
             st.subheader('Top Property Owners')
-            st.table(frames['topOwners'][['ownerName','count']])
+            st.table(frames['topOwners'][['ownerAddress','count']])
         with col2:
             st.subheader('Top Street Owners')
-            st.table(frames['topStreetOwners'][['ownerName', 'count']])
+            st.table(frames['topStreetOwners'][['ownerAddress', 'count']])
         with col3:
             st.subheader('Top District Owners')
-            st.table(frames['topDistrictOwners'][['ownerName', 'count']])
+            st.table(frames['topDistrictOwners'][['ownerAddress', 'count']])
         with col4:
             st.subheader('Top City Owners')
-            st.table(frames['topCityOwners'][['ownerName', 'count']])
+            st.table(frames['topCityOwners'][['ownerAddress', 'count']])
     
     with st.container():
         col1, col2 = st.columns(2)
@@ -574,13 +574,13 @@ def render_street_report(street_name):
 
         with col1:
             st.subheader('📋 Owner Data')
-            st.write(df_owner_street_filtered[['ownerAddress','ownerName','propertyCount','streetCount']])
+            st.write(df_owner_street_filtered[['ownerAddress','propertyCount','streetCount']])
         
         with col2:
             st.subheader('🛒 Market Listings')
 
             if len(listings) > 0:
-                listings = listings[['ownerAddress', 'ownerName', 'salePrice', 'lastSale', 'osLink']]
+                listings = listings[['ownerAddress', 'salePrice', 'lastSale', 'osLink']]
                 listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
                 st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
             else:
@@ -606,7 +606,7 @@ def render_district_report(district_name):
     city_name = df_district.iloc[0].city.strip()
 
     listings = df_district.loc[(df_district['salePrice'] > 0) & (df_district['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
-    listings = listings[['ownerAddress', 'ownerName', 'street', 'salePrice', 'lastSale', 'osLink']]
+    listings = listings[['ownerAddress', 'street', 'salePrice', 'lastSale', 'osLink']]
     listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
     floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'
 
@@ -634,7 +634,7 @@ def render_district_report(district_name):
 
         with col1:
             st.subheader(f"📋 Owner Data")
-            st.write(df_owner_district_full[["ownerAddress", "ownerName", "propertyCount", "streetsInDistrict", "districtCount"]].sort_values(by="propertyCount", ascending=False))
+            st.write(df_owner_district_full[["ownerAddress", "propertyCount", "streetsInDistrict", "districtCount"]].sort_values(by="propertyCount", ascending=False))
         with col2:
             st.subheader(f"🛒 Market Listings")
             st.write(listings.to_html(escape=False, render_links=True, index=False), unsafe_allow_html=True)
@@ -680,7 +680,7 @@ def render_city_report(city_name):
     city_count = df_owner_city_full.cityCount.sum()
 
     listings = df_city.loc[(df_city['salePrice'] > 0) & (df_city['saleType'] == 'basic')].sort_values(by='salePrice').fillna('Mint')
-    listings = listings[['ownerAddress', 'ownerName', 'district', 'street', 'salePrice', 'lastSale', 'osLink']]
+    listings = listings[['ownerAddress', 'district', 'street', 'salePrice', 'lastSale', 'osLink']]
     listings['osLink'] = listings['osLink'].apply(make_clickable, args=('View on OpenSea',))
     floor_price = listings['salePrice'].min() if listings['salePrice'].min() > 0 else 'N/A'
 
@@ -705,7 +705,7 @@ def render_city_report(city_name):
 
         with col1:
             st.subheader(f"📋 Owner Data")
-            st.write(df_owner_city_full[["ownerAddress", "ownerName", "propertyCount", "streetCount", "districtsInCity", "cityCount"]].sort_values(by="propertyCount", ascending=False))
+            st.write(df_owner_city_full[["ownerAddress", "propertyCount", "streetCount", "districtsInCity", "cityCount"]].sort_values(by="propertyCount", ascending=False))
             st.download_button(
                 "Download Owner Snapshot",
                 df_city[['ownerAddress', 'tokenId']].to_csv(index=False).encode('utf-8'),
