@@ -186,9 +186,14 @@ SPECIAL_BRIX_DICT = {
 
 #@st.cache_data(ttl=300)
 def load_data():
+    # df = pd.read_json(
+    #     'gcs://propertys-opensea/properties.json',
+    #     storage_options={'token': st.secrets['gcp_service_account']}
+    # )
+
     df = pd.read_json(
         'gcs://propertys-opensea/properties.json',
-        storage_options={'token': st.secrets['gcp_service_account']}
+        storage_options={'token': 'anon'}
     )
     
     values = {"ownerName": df['ownerAddress']}
